@@ -1,6 +1,6 @@
 # Personal Budgeting App
 
-A beautiful, personal budgeting application built with React Native and Expo. Track your expenses, manage budgets, and visualize your spending patterns with an intuitive interface featuring a forest green color scheme with sea blue and purple accents.
+Personal budgeting application built with React Native and Expo. Track your expenses, manage budgets, and visualize your spending patterns with an intuitive interface featuring a forest green color scheme with sea blue and purple accents.
 
 ## Features
 
@@ -121,5 +121,3 @@ Private project - All rights reserved
 Peter Ranchero
 
 ---
-
-Built with ❤️ using React Native and Expo

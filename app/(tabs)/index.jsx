@@ -638,7 +638,6 @@ export default function HomeScreen() {
 
       <View style={styles.listHeader}>
         <Text style={styles.listTitle}>Recent Expenses</Text>
-        <Text style={styles.totalText}>Total: ${expenses.reduce((sum, e) => sum + e.amount, 0).toFixed(2)}</Text>
       </View>
 
       <View style={styles.list}>

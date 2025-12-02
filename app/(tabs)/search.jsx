@@ -84,6 +84,9 @@ export default function SearchScreen() {
   const totalAmount = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);
   const transactionCount = filteredTransactions.length;
 
+  // Check if there's an active search (not just date range)
+  const hasActiveSearch = searchCategory || searchPlace.trim() || searchDescription.trim();
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -320,43 +323,47 @@ export default function SearchScreen() {
           </View>
         )}
 
-        {/* Results Summary */}
-        <View style={styles.resultsSummary}>
-          <Text style={styles.resultsTitle}>Results</Text>
-          <Text style={styles.resultsCount}>
-            {transactionCount} {transactionCount === 1 ? 'transaction' : 'transactions'}
-          </Text>
-          <Text style={styles.resultsTotal}>Total: ${totalAmount.toFixed(2)}</Text>
-        </View>
+        {/* Results Summary - Only show if there's an active search */}
+        {hasActiveSearch && (
+          <>
+            <View style={styles.resultsSummary}>
+              <Text style={styles.resultsTitle}>Results</Text>
+              <Text style={styles.resultsCount}>
+                {transactionCount} {transactionCount === 1 ? 'transaction' : 'transactions'}
+              </Text>
+              <Text style={styles.resultsTotal}>Total: ${totalAmount.toFixed(2)}</Text>
+            </View>
 
-        {/* Transaction List */}
-        {filteredTransactions.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No expenses found matching your search criteria.</Text>
-            <Text style={styles.emptySubtext}>Try adjusting your filters or time period.</Text>
-          </View>
-        ) : (
-          <View style={styles.transactionsList}>
-            {filteredTransactions.map((transaction) => (
-              <View key={transaction.id} style={styles.transactionItem}>
-                <View style={styles.transactionInfo}>
-                  <View style={styles.transactionHeader}>
-                    <Text style={styles.transactionCategory}>{transaction.category}</Text>
-                    <View
-                      style={[
-                        styles.categoryDot,
-                        { backgroundColor: CATEGORY_COLORS[transaction.category] || '#9E9E9E' },
-                      ]}
-                    />
-                  </View>
-                  {transaction.place && <Text style={styles.transactionPlace}>{transaction.place}</Text>}
-                  {transaction.description && <Text style={styles.transactionDescription}>{transaction.description}</Text>}
-                  <Text style={styles.transactionDate}>{formatDate(transaction.date)}</Text>
-                </View>
-                <Text style={styles.transactionAmount}>${transaction.amount.toFixed(2)}</Text>
+            {/* Transaction List */}
+            {filteredTransactions.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>No expenses found matching your search criteria.</Text>
+                <Text style={styles.emptySubtext}>Try adjusting your filters or time period.</Text>
               </View>
-            ))}
-          </View>
+            ) : (
+              <View style={styles.transactionsList}>
+                {filteredTransactions.map((transaction) => (
+                  <View key={transaction.id} style={styles.transactionItem}>
+                    <View style={styles.transactionInfo}>
+                      <View style={styles.transactionHeader}>
+                        <Text style={styles.transactionCategory}>{transaction.category}</Text>
+                        <View
+                          style={[
+                            styles.categoryDot,
+                            { backgroundColor: CATEGORY_COLORS[transaction.category] || '#9E9E9E' },
+                          ]}
+                        />
+                      </View>
+                      {transaction.place && <Text style={styles.transactionPlace}>{transaction.place}</Text>}
+                      {transaction.description && <Text style={styles.transactionDescription}>{transaction.description}</Text>}
+                      <Text style={styles.transactionDate}>{formatDate(transaction.date)}</Text>
+                    </View>
+                    <Text style={styles.transactionAmount}>${transaction.amount.toFixed(2)}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </>
         )}
       </ScrollView>
     </View>
