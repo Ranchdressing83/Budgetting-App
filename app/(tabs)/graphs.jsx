@@ -1,73 +1,49 @@
 import { useBudget } from '@/components/BudgetContext';
 import { useTransactions } from '@/components/TransactionsContext';
-import { CATEGORY_COLORS } from '@/constants/categories';
+import { CATEGORY_COLORS, getCategoryGroup, GROUP_COLORS } from '@/constants/categories';
 import { COLORS } from '@/constants/colors';
-import React, { useState } from 'react';
-import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  BUDGET_PERIOD_BIWEEKLY,
+  calculateBudgetSpending,
+  formatBiweeklyPeriodLabel,
+  getBiweeklyPeriodKey,
+  getBudgetName,
+  getNextBiweeklyPeriodKey,
+  getPreviousBiweeklyPeriodKey,
+  transactionMatchesBudgetPeriod,
+} from '@/utils/budgetUtils';
+import {
+  calculateGroupPeriodSummary,
+  calculateWealthBuildingBreakdown,
+} from '@/utils/monthlySummaryUtils';
+import {
+  getNextMonthKey,
+  getPreviousMonthKey,
+} from '@/utils/insightsUtils';
+import { formatCurrency } from '@/utils/scorecardUtils';
+import { useRouter } from 'expo-router';
+import React, { useMemo, useState } from 'react';
+import { Dimensions, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { PieChart } from 'react-native-gifted-charts';
 
-// Helper function to group transactions by week
-// Returns an object where keys are week identifiers (e.g., "2024-W01")
-// Weeks start on Monday and end on Sunday
-function groupByWeek(transactions) {
+// Helper function to group transactions by bi-weekly pay period (1st–15th & 16th–end)
+function groupByBiweekly(transactions) {
   const grouped = {};
-  
+
   transactions.forEach((transaction) => {
-    const date = new Date(transaction.date);
-    const year = date.getFullYear();
-    
-    // Find the first Monday of the year
-    const jan1 = new Date(year, 0, 1);
-    const jan1Day = jan1.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-    // Convert to Monday-based: Monday = 0, Tuesday = 1, ..., Sunday = 6
-    const jan1MondayBased = (jan1Day + 6) % 7;
-    // Days to add to get to first Monday (if Jan 1 is not Monday)
-    const daysToFirstMonday = jan1MondayBased === 0 ? 0 : 7 - jan1MondayBased;
-    const firstMonday = new Date(year, 0, 1 + daysToFirstMonday);
-    firstMonday.setHours(0, 0, 0, 0); // Start of Monday (midnight)
-    
-    // Calculate days from first Monday
-    const daysSinceFirstMonday = Math.floor((date - firstMonday) / (1000 * 60 * 60 * 24));
-    
-    // If date is before first Monday, it belongs to previous year's last week
-    if (daysSinceFirstMonday < 0) {
-      const prevYear = year - 1;
-      const prevJan1 = new Date(prevYear, 0, 1);
-      const prevJan1Day = prevJan1.getDay();
-      const prevJan1MondayBased = (prevJan1Day + 6) % 7;
-      const prevDaysToFirstMonday = prevJan1MondayBased === 0 ? 0 : 7 - prevJan1MondayBased;
-      const prevFirstMonday = new Date(prevYear, 0, 1 + prevDaysToFirstMonday);
-      prevFirstMonday.setHours(0, 0, 0, 0); // Start of Monday (midnight)
-      const prevDaysSinceFirstMonday = Math.floor((date - prevFirstMonday) / (1000 * 60 * 60 * 24));
-      const prevWeekNumber = Math.floor(prevDaysSinceFirstMonday / 7) + 1;
-      // Get last week number of previous year (approximate, could be 52 or 53)
-      const lastWeekKey = `${prevYear}-W${prevWeekNumber.toString().padStart(2, '0')}`;
-      if (!grouped[lastWeekKey]) {
-        grouped[lastWeekKey] = { income: 0, expenses: 0 };
-      }
-      if (transaction.type === 'income') {
-        grouped[lastWeekKey].income += transaction.amount;
-      } else {
-        grouped[lastWeekKey].expenses += transaction.amount;
-      }
-      return;
+    const periodKey = getBiweeklyPeriodKey(new Date(transaction.date));
+
+    if (!grouped[periodKey]) {
+      grouped[periodKey] = { income: 0, expenses: 0 };
     }
-    
-    // Calculate week number (1-indexed)
-    const weekNumber = Math.floor(daysSinceFirstMonday / 7) + 1;
-    const weekKey = `${year}-W${weekNumber.toString().padStart(2, '0')}`;
-    
-    if (!grouped[weekKey]) {
-      grouped[weekKey] = { income: 0, expenses: 0 };
-    }
-    
+
     if (transaction.type === 'income') {
-      grouped[weekKey].income += transaction.amount;
+      grouped[periodKey].income += transaction.amount;
     } else {
-      grouped[weekKey].expenses += transaction.amount;
+      grouped[periodKey].expenses += transaction.amount;
     }
   });
-  
+
   return grouped;
 }
 
@@ -134,36 +110,30 @@ function groupByCategory(transactions) {
   return grouped;
 }
 
-// Helper function to get expenses by category for a specific week
-function getWeeklyCategoryData(transactions, weekKey) {
-  // Extract year and week number from weekKey (e.g., "2024-W01")
-  const [yearStr, weekStr] = weekKey.split('-W');
-  const year = parseInt(yearStr);
-  const weekNumber = parseInt(weekStr);
-  
-  // Find the first Monday of the year
-  const jan1 = new Date(year, 0, 1);
-  const jan1Day = jan1.getDay();
-  const jan1MondayBased = (jan1Day + 6) % 7;
-  const daysToFirstMonday = jan1MondayBased === 0 ? 0 : 7 - jan1MondayBased;
-  const firstMonday = new Date(year, 0, 1 + daysToFirstMonday);
-  firstMonday.setHours(0, 0, 0, 0); // Start of Monday (midnight)
-  
-  // Calculate the start and end of the week
-  const weekStart = new Date(firstMonday);
-  weekStart.setDate(weekStart.getDate() + (weekNumber - 1) * 7);
-  weekStart.setHours(0, 0, 0, 0); // Start of Monday (midnight)
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekEnd.getDate() + 6); // Sunday (6 days after Monday)
-  weekEnd.setHours(23, 59, 59, 999); // End of Sunday (just before midnight)
-  
-  const weekExpenses = transactions.filter((t) => {
+function groupByExpenseGroup(transactions) {
+  const grouped = {};
+
+  transactions
+    .filter((t) => t.type === 'expense')
+    .forEach((transaction) => {
+      const groupName = getCategoryGroup(transaction.category);
+      if (!grouped[groupName]) {
+        grouped[groupName] = 0;
+      }
+      grouped[groupName] += transaction.amount;
+    });
+
+  return grouped;
+}
+
+// Helper function to get expenses by category for a specific bi-weekly period
+function getBiweeklyCategoryData(transactions, periodKey) {
+  const periodExpenses = transactions.filter((t) => {
     if (t.type !== 'expense') return false;
-    const date = new Date(t.date);
-    return date >= weekStart && date <= weekEnd;
+    return transactionMatchesBudgetPeriod(new Date(t.date), BUDGET_PERIOD_BIWEEKLY, periodKey);
   });
-  
-  return groupByCategory(weekExpenses);
+
+  return groupByCategory(periodExpenses);
 }
 
 // Helper function to get expenses by category for a specific month
@@ -189,23 +159,51 @@ function getYearlyCategoryData(transactions, yearKey) {
   return groupByCategory(yearExpenses);
 }
 
+function getBiweeklyGroupData(transactions, periodKey) {
+  const periodExpenses = transactions.filter((t) => {
+    if (t.type !== 'expense') return false;
+    return transactionMatchesBudgetPeriod(new Date(t.date), BUDGET_PERIOD_BIWEEKLY, periodKey);
+  });
+
+  return groupByExpenseGroup(periodExpenses);
+}
+
+function getMonthlyGroupData(transactions, monthKey) {
+  const monthExpenses = transactions.filter((t) => {
+    if (t.type !== 'expense') return false;
+    const date = new Date(t.date);
+    const tMonthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
+    return tMonthKey === monthKey;
+  });
+
+  return groupByExpenseGroup(monthExpenses);
+}
+
+function getYearlyGroupData(transactions, yearKey) {
+  const yearExpenses = transactions.filter((t) => {
+    if (t.type !== 'expense') return false;
+    const date = new Date(t.date);
+    return date.getFullYear().toString() === yearKey;
+  });
+
+  return groupByExpenseGroup(yearExpenses);
+}
+
 
 // Helper function to convert category data to pie chart format
 // react-native-gifted-charts expects: [{ value, color, label, text }]
-function preparePieChartData(categoryData) {
-  const entries = Object.entries(categoryData).filter(([_, amount]) => amount > 0);
+function preparePieChartData(sliceData, colorMap = CATEGORY_COLORS) {
+  const entries = Object.entries(sliceData).filter(([_, amount]) => amount > 0);
   
   if (entries.length === 0) return null;
   
-  const chartData = entries.map(([category, amount]) => {
-    // Get the color for this category - ensure exact match
-    const categoryColor = CATEGORY_COLORS[category];
-    const color = categoryColor || COLORS.gray;
+  const chartData = entries.map(([label, amount]) => {
+    const color = colorMap[label] || COLORS.gray;
     
     return {
       value: parseFloat(amount.toFixed(2)),
       color: color, // Must be hex color string like '#FF4444'
-      label: category,
+      label,
       text: `$${amount.toFixed(2)}`,
     };
   });
@@ -227,40 +225,7 @@ function prepareBudgetChartData(transactions, budgets, period, periodKey) {
   transactions
     .filter((t) => {
       if (t.type !== 'expense') return false;
-      const date = new Date(t.date);
-      if (period === 'week') {
-        const year = date.getFullYear();
-        const jan1 = new Date(year, 0, 1);
-        const jan1Day = jan1.getDay();
-        const jan1MondayBased = (jan1Day + 6) % 7;
-        const daysToFirstMonday = jan1MondayBased === 0 ? 0 : 7 - jan1MondayBased;
-        const firstMonday = new Date(year, 0, 1 + daysToFirstMonday);
-        firstMonday.setHours(0, 0, 0, 0);
-        const daysSinceFirstMonday = Math.floor((date - firstMonday) / (1000 * 60 * 60 * 24));
-        let weekNumber;
-        if (daysSinceFirstMonday < 0) {
-          const prevYear = year - 1;
-          const prevJan1 = new Date(prevYear, 0, 1);
-          const prevJan1Day = prevJan1.getDay();
-          const prevJan1MondayBased = (prevJan1Day + 6) % 7;
-          const prevDaysToFirstMonday = prevJan1MondayBased === 0 ? 0 : 7 - prevJan1MondayBased;
-          const prevFirstMonday = new Date(prevYear, 0, 1 + prevDaysToFirstMonday);
-          prevFirstMonday.setHours(0, 0, 0, 0);
-          const prevDaysSinceFirstMonday = Math.floor((date - prevFirstMonday) / (1000 * 60 * 60 * 24));
-          weekNumber = Math.floor(prevDaysSinceFirstMonday / 7) + 1;
-          const tWeekKey = `${prevYear}-W${weekNumber.toString().padStart(2, '0')}`;
-          return tWeekKey === periodKey;
-        } else {
-          weekNumber = Math.floor(daysSinceFirstMonday / 7) + 1;
-          const tWeekKey = `${year}-W${weekNumber.toString().padStart(2, '0')}`;
-          return tWeekKey === periodKey;
-        }
-      } else if (period === 'month') {
-        const tMonthKey = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}`;
-        return tMonthKey === periodKey;
-      } else {
-        return date.getFullYear().toString() === periodKey;
-      }
+      return transactionMatchesBudgetPeriod(new Date(t.date), period, periodKey);
     })
     .forEach((t) => {
       if (!categorySpending[t.category]) {
@@ -271,17 +236,7 @@ function prepareBudgetChartData(transactions, budgets, period, periodKey) {
 
   // Process each budget - create one bar per budget
   budgets.forEach((budget) => {
-    let spending = 0;
-    
-    if (budget.category === 'Overall') {
-      // Calculate total spending for overall budget
-      spending = Object.values(categorySpending).reduce((sum, val) => sum + val, 0);
-    } else {
-      // Get spending for this specific category
-      spending = categorySpending[budget.category] || 0;
-    }
-    
-    // Calculate percentage of budget used
+    const spending = calculateBudgetSpending(budget, transactions, periodKey);
     const percentage = budget.amount > 0 ? (spending / budget.amount) * 100 : 0;
     
     // Color code based on percentage: forest green < 75%, yellow 75-90%, orange 90-100%, red >= 100%
@@ -295,7 +250,7 @@ function prepareBudgetChartData(transactions, budgets, period, periodKey) {
     }
     
     chartData.push({
-      label: budget.category === 'Overall' ? 'Overall' : budget.category,
+      label: getBudgetName(budget),
       spending: spending,
       budget: budget.amount,
       percentage: percentage,
@@ -361,102 +316,200 @@ function HorizontalBudgetBars({ data, maxBudget }) {
   );
 }
 
+function PeriodSummaryRollup({ summary }) {
+  const remainingColor = summary.remainingCash >= 0 ? COLORS.accent : COLORS.error;
+
+  return (
+    <View style={rollupStyles.container}>
+      <Text style={rollupStyles.title}>Period Summary</Text>
+      <View style={rollupStyles.row}>
+        <Text style={rollupStyles.label}>Income</Text>
+        <Text style={rollupStyles.value}>{formatCurrency(summary.income)}</Text>
+      </View>
+      <View style={rollupStyles.row}>
+        <Text style={rollupStyles.label}>Lifestyle</Text>
+        <Text style={rollupStyles.value}>{formatCurrency(summary.lifestyle)}</Text>
+      </View>
+      <View style={rollupStyles.row}>
+        <Text style={rollupStyles.label}>Essentials</Text>
+        <Text style={rollupStyles.value}>{formatCurrency(summary.essentials)}</Text>
+      </View>
+      <View style={rollupStyles.row}>
+        <Text style={rollupStyles.label}>Wealth</Text>
+        <Text style={rollupStyles.value}>{formatCurrency(summary.wealth)}</Text>
+      </View>
+      {summary.otherSpending > 0 && (
+        <View style={rollupStyles.row}>
+          <Text style={rollupStyles.label}>Other</Text>
+          <Text style={rollupStyles.value}>{formatCurrency(summary.otherSpending)}</Text>
+        </View>
+      )}
+      <View style={[rollupStyles.row, rollupStyles.totalRow]}>
+        <Text style={rollupStyles.totalLabel}>Remaining Cash</Text>
+        <Text style={[rollupStyles.totalValue, { color: remainingColor }]}>
+          {formatCurrency(summary.remainingCash)}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function WealthBuildingView({ transactions, period, periodKey }) {
+  const { breakdown, total } = calculateWealthBuildingBreakdown(transactions, period, periodKey);
+  const entries = Object.entries(breakdown);
+
+  if (total <= 0) {
+    return <Text style={styles.noExpensesText}>No wealth building activity this period</Text>;
+  }
+
+  return (
+    <View style={rollupStyles.container}>
+      <Text style={rollupStyles.title}>Wealth Building</Text>
+      {entries.map(([category, amount]) => (
+        <View key={category} style={rollupStyles.row}>
+          <View style={rollupStyles.wealthLabelRow}>
+            <View
+              style={[
+                styles.categoryColorDot,
+                { backgroundColor: CATEGORY_COLORS[category] || COLORS.gray },
+              ]}
+            />
+            <Text style={rollupStyles.label}>{category}</Text>
+          </View>
+          <Text style={rollupStyles.value}>{formatCurrency(amount)}</Text>
+        </View>
+      ))}
+      <View style={[rollupStyles.row, rollupStyles.totalRow]}>
+        <Text style={rollupStyles.totalLabel}>Total Wealth Building</Text>
+        <Text style={[rollupStyles.totalValue, { color: COLORS.accent }]}>
+          {formatCurrency(total)}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function PeriodNavigator({ label, onPrevious, onNext, isCurrent, canGoNext = true }) {
+  return (
+    <View style={styles.periodNavigator}>
+      <TouchableOpacity style={styles.navButton} onPress={onPrevious}>
+        <Text style={styles.navButtonText}>← Previous</Text>
+      </TouchableOpacity>
+      <Text style={styles.navLabel}>{label}{isCurrent ? ' (Current)' : ''}</Text>
+      <TouchableOpacity
+        style={[styles.navButton, !canGoNext && styles.navButtonDisabled]}
+        onPress={canGoNext ? onNext : undefined}
+        disabled={!canGoNext}>
+        <Text style={[styles.navButtonText, !canGoNext && styles.navButtonTextDisabled]}>
+          Next →
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 export default function GraphsScreen() {
+  const router = useRouter();
   const { transactions } = useTransactions();
-  const { getBudget, getBudgetsForPeriod } = useBudget();
+  const { getBudgetsForPeriod } = useBudget();
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedPeriod, setSelectedPeriod] = useState(null);
-  const [viewMode, setViewMode] = useState({ week: 'pie', month: 'pie', year: 'pie' }); // 'pie' or 'budget'
+  const [chartGrouping, setChartGrouping] = useState('category');
+  const [viewMode, setViewMode] = useState({ biweekly: 'pie', month: 'pie', year: 'pie' });
 
-  const weeklyData = groupByWeek(transactions);
+  const sliceColorMap = chartGrouping === 'groups' ? GROUP_COLORS : CATEGORY_COLORS;
+
+  const renderChartGroupingToggle = () => (
+    <View style={styles.chartGroupingToggle}>
+      {[
+        { key: 'category', label: 'Category' },
+        { key: 'groups', label: 'Groups' },
+      ].map(({ key, label }) => (
+        <TouchableOpacity
+          key={key}
+          style={[
+            styles.groupingButton,
+            chartGrouping === key && styles.groupingButtonActive,
+          ]}
+          onPress={() => {
+            setChartGrouping(key);
+            setSelectedCategory(null);
+            setSelectedPeriod(null);
+          }}>
+          <Text
+            style={[
+              styles.groupingButtonText,
+              chartGrouping === key && styles.groupingButtonTextActive,
+            ]}>
+            {label}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  const renderViewToggle = (periodKey, modes = ['pie', 'budget'], compact = false) => (
+    <View style={[styles.viewModeToggle, compact && styles.viewModeToggleCompact]}>
+      {modes.map((mode) => (
+        <TouchableOpacity
+          key={mode}
+          style={[
+            styles.toggleButton,
+            compact && styles.toggleButtonCompact,
+            viewMode[periodKey] === mode && styles.toggleButtonActive,
+          ]}
+          onPress={() => setViewMode({ ...viewMode, [periodKey]: mode })}>
+          <Text
+            style={[
+              styles.toggleButtonText,
+              compact && styles.toggleButtonTextCompact,
+              viewMode[periodKey] === mode && styles.toggleButtonTextActive,
+            ]}>
+            {mode === 'pie' ? 'Pie' : mode === 'budget' ? 'Budget' : 'Wealth'}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  const biweeklyData = groupByBiweekly(transactions);
   const monthlyData = groupByMonth(transactions);
   const yearlyData = groupByYear(transactions);
 
-  // Get current week key (weeks start on Monday, end on Sunday)
-  const getCurrentWeekKey = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    
-    // Find the first Monday of the year
-    const jan1 = new Date(year, 0, 1);
-    const jan1Day = jan1.getDay();
-    const jan1MondayBased = (jan1Day + 6) % 7;
-    const daysToFirstMonday = jan1MondayBased === 0 ? 0 : 7 - jan1MondayBased;
-    const firstMonday = new Date(year, 0, 1 + daysToFirstMonday);
-    firstMonday.setHours(0, 0, 0, 0); // Start of Monday (midnight)
-    
-    // Calculate days from first Monday
-    const daysSinceFirstMonday = Math.floor((today - firstMonday) / (1000 * 60 * 60 * 24));
-    
-    // If today is before first Monday, use previous year's last week
-    if (daysSinceFirstMonday < 0) {
-      const prevYear = year - 1;
-      const prevJan1 = new Date(prevYear, 0, 1);
-      const prevJan1Day = prevJan1.getDay();
-      const prevJan1MondayBased = (prevJan1Day + 6) % 7;
-      const prevDaysToFirstMonday = prevJan1MondayBased === 0 ? 0 : 7 - prevJan1MondayBased;
-      const prevFirstMonday = new Date(prevYear, 0, 1 + prevDaysToFirstMonday);
-      prevFirstMonday.setHours(0, 0, 0, 0); // Start of Monday (midnight)
-      const prevDaysSinceFirstMonday = Math.floor((today - prevFirstMonday) / (1000 * 60 * 60 * 24));
-      const prevWeekNumber = Math.floor(prevDaysSinceFirstMonday / 7) + 1;
-      return `${prevYear}-W${prevWeekNumber.toString().padStart(2, '0')}`;
-    }
-    
-    // Calculate week number (1-indexed)
-    const weekNumber = Math.floor(daysSinceFirstMonday / 7) + 1;
-    return `${year}-W${weekNumber.toString().padStart(2, '0')}`;
-  };
-
-  // Get current month key
   const getCurrentMonthKey = () => {
     const today = new Date();
     return `${today.getFullYear()}-${(today.getMonth() + 1).toString().padStart(2, '0')}`;
   };
 
-  // Get current year key
   const getCurrentYearKey = () => {
     return new Date().getFullYear().toString();
   };
 
-  const currentWeekKey = getCurrentWeekKey();
+  const currentBiweeklyKey = getBiweeklyPeriodKey(new Date());
   const currentMonthKey = getCurrentMonthKey();
   const currentYearKey = getCurrentYearKey();
-  
-  const sortedWeeks = weeklyData[currentWeekKey] ? [[currentWeekKey, weeklyData[currentWeekKey]]] : [];
-  const sortedMonths = monthlyData[currentMonthKey] ? [[currentMonthKey, monthlyData[currentMonthKey]]] : [];
+
+  const [selectedBiweeklyKey, setSelectedBiweeklyKey] = useState(currentBiweeklyKey);
+  const [selectedMonthKey, setSelectedMonthKey] = useState(currentMonthKey);
+
+  const sortedBiweeks = useMemo(() => {
+    const data = biweeklyData[selectedBiweeklyKey];
+    return data
+      ? [[selectedBiweeklyKey, data]]
+      : [[selectedBiweeklyKey, { expenses: 0, income: 0, transactions: [] }]];
+  }, [biweeklyData, selectedBiweeklyKey]);
+
+  const sortedMonths = useMemo(() => {
+    const data = monthlyData[selectedMonthKey];
+    return data ? [[selectedMonthKey, data]] : [[selectedMonthKey, { expenses: 0, income: 0, transactions: [] }]];
+  }, [monthlyData, selectedMonthKey]);
+
   const sortedYears = yearlyData[currentYearKey] ? [[currentYearKey, yearlyData[currentYearKey]]] : [];
 
   const formatMonth = (monthKey) => {
     const [year, month] = monthKey.split('-');
     const date = new Date(year, parseInt(month) - 1);
     return date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-  };
-
-  const formatWeek = (weekKey) => {
-    // Extract year and week number from weekKey (e.g., "2024-W01")
-    const [yearStr, weekStr] = weekKey.split('-W');
-    const year = parseInt(yearStr);
-    const weekNumber = parseInt(weekStr);
-    
-    // Find the first Monday of the year
-    const jan1 = new Date(year, 0, 1);
-    const jan1Day = jan1.getDay();
-    const jan1MondayBased = (jan1Day + 6) % 7;
-    const daysToFirstMonday = jan1MondayBased === 0 ? 0 : 7 - jan1MondayBased;
-    const firstMonday = new Date(year, 0, 1 + daysToFirstMonday);
-    firstMonday.setHours(0, 0, 0, 0);
-    
-    // Calculate the start and end of the week
-    const weekStart = new Date(firstMonday);
-    weekStart.setDate(weekStart.getDate() + (weekNumber - 1) * 7);
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekEnd.getDate() + 6); // Sunday
-    
-    // Format dates
-    const startFormatted = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const endFormatted = weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    
-    return `from ${startFormatted} to ${endFormatted}`;
   };
 
   const formatYear = (yearKey) => {
@@ -466,83 +519,166 @@ export default function GraphsScreen() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Spending Analysis</Text>
+        <View style={styles.titleRow}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/home')} activeOpacity={0.7}>
+            <Image source={require('@/assets/images/logo.png')} style={styles.headerLogo} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Spending Analysis</Text>
+        </View>
+        {renderChartGroupingToggle()}
       </View>
 
-      {/* Weekly Summary */}
+      {/* Bi-Weekly Summary */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Weekly Summary</Text>
-          {sortedWeeks.length > 0 && (
-            <View style={styles.viewModeToggle}>
-              <TouchableOpacity
-                style={[styles.toggleButton, viewMode.week === 'pie' && styles.toggleButtonActive]}
-                onPress={() => setViewMode({ ...viewMode, week: 'pie' })}>
-                <Text style={[styles.toggleButtonText, viewMode.week === 'pie' && styles.toggleButtonTextActive]}>
-                  Pie
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.toggleButton, viewMode.week === 'budget' && styles.toggleButtonActive]}
-                onPress={() => setViewMode({ ...viewMode, week: 'budget' })}>
-                <Text style={[styles.toggleButtonText, viewMode.week === 'budget' && styles.toggleButtonTextActive]}>
-                  Budget
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          <Text style={styles.sectionTitle}>Bi-Weekly Summary</Text>
+          {sortedBiweeks.length > 0 && renderViewToggle('biweekly', ['pie', 'budget'])}
         </View>
-          {sortedWeeks.length === 0 ? (
+        <PeriodNavigator
+          label={formatBiweeklyPeriodLabel(selectedBiweeklyKey)}
+          onPrevious={() => setSelectedBiweeklyKey(getPreviousBiweeklyPeriodKey(selectedBiweeklyKey))}
+          onNext={() => setSelectedBiweeklyKey(getNextBiweeklyPeriodKey(selectedBiweeklyKey))}
+          isCurrent={selectedBiweeklyKey === currentBiweeklyKey}
+          canGoNext={selectedBiweeklyKey !== currentBiweeklyKey}
+        />
+          {sortedBiweeks.length === 0 ? (
               <Text style={styles.emptyText}>No data yet</Text>
             ) : (
-              sortedWeeks.map(([week, data]) => {
-                const weeklyCategoryData = getWeeklyCategoryData(transactions, week);
-                const pieData = preparePieChartData(weeklyCategoryData);
-                const weekBudgets = getBudgetsForPeriod('week', week);
-                const budgetChartData = prepareBudgetChartData(transactions, weekBudgets, 'week', week);
-                const maxBudgetValue = weekBudgets.length > 0 
-                  ? Math.max(...weekBudgets.map(b => b.amount)) * 1.2 
+              sortedBiweeks.map(([periodKey, data]) => {
+                const biweeklySliceData =
+                  chartGrouping === 'groups'
+                    ? getBiweeklyGroupData(transactions, periodKey)
+                    : getBiweeklyCategoryData(transactions, periodKey);
+                const pieData = preparePieChartData(biweeklySliceData, sliceColorMap);
+                const biweeklyBudgets = getBudgetsForPeriod(BUDGET_PERIOD_BIWEEKLY, periodKey);
+                const budgetChartData = prepareBudgetChartData(
+                  transactions,
+                  biweeklyBudgets,
+                  BUDGET_PERIOD_BIWEEKLY,
+                  periodKey,
+                );
+                const periodSummary = calculateGroupPeriodSummary(
+                  transactions,
+                  BUDGET_PERIOD_BIWEEKLY,
+                  periodKey,
+                );
+                const maxBudgetValue = biweeklyBudgets.length > 0 
+                  ? Math.max(...biweeklyBudgets.map(b => b.amount)) * 1.2 
                   : 100;
                 
                 return (
-                  <View key={week} style={styles.summaryCard}>
-                    <Text style={styles.periodLabel}>{formatWeek(week)}</Text>
+                  <View key={periodKey} style={styles.summaryCard}>
+                    <Text style={styles.periodLabel}>{formatBiweeklyPeriodLabel(periodKey)}</Text>
                     
-                    {/* Pie Chart for Weekly Spending by Category */}
-                    {viewMode.week === 'pie' && (
+                    {/* Pie Chart for Bi-Weekly Spending by Category */}
+                    {viewMode.biweekly === 'pie' && (
                       <>
                         {pieData && data.expenses > 0 ? (
-                          <View style={styles.chartContainer}>
-                            <PieChart
-                              data={pieData}
-                              radius={90}
-                              textColor="#333"
-                              textSize={12}
-                              showText={false}
-                              focusOnPress={true}
-                              showValuesAsLabels={false}
-                              labelsPosition="outward"
-                              innerRadius={0}
-                              innerCircleColor="#fff"
-                              donut={false}
-                              centerLabelComponent={() => (
-                                <View style={styles.centerLabel}>
-                                  <Text style={styles.centerLabelText}>Total</Text>
-                                  <Text style={styles.centerLabelAmount}>
-                                    ${data.expenses.toFixed(2)}
-                                  </Text>
-                                </View>
-                              )}
-                            />
-                          </View>
+                          <>
+                            <View style={styles.chartContainer}>
+                              <PieChart
+                                data={pieData}
+                                radius={90}
+                                textColor="#333"
+                                textSize={12}
+                                showText={false}
+                                focusOnPress={true}
+                                showValuesAsLabels={false}
+                                labelsPosition="outward"
+                                innerRadius={0}
+                                innerCircleColor="#fff"
+                                donut={false}
+                                centerLabelComponent={() => (
+                                  <View style={styles.centerLabel}>
+                                    <Text style={styles.centerLabelText}>Total</Text>
+                                    <Text style={styles.centerLabelAmount}>
+                                      ${data.expenses.toFixed(2)}
+                                    </Text>
+                                  </View>
+                                )}
+                              />
+                            </View>
+
+                            {/* Category Breakdown - Clickable */}
+                            <View style={styles.categoryBreakdown}>
+                              {Object.entries(biweeklySliceData)
+                                .filter(([_, amount]) => amount > 0)
+                                .sort((a, b) => b[1] - a[1])
+                                .map(([cat, amount]) => {
+                                  const isSelected =
+                                    selectedCategory === cat &&
+                                    selectedPeriod === `biweekly-${periodKey}`;
+                                  const categoryColor = sliceColorMap[cat] || '#C9CBCF';
+                                  const hexToRgba = (hex, opacity) => {
+                                    const r = parseInt(hex.slice(1, 3), 16);
+                                    const g = parseInt(hex.slice(3, 5), 16);
+                                    const b = parseInt(hex.slice(5, 7), 16);
+                                    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+                                  };
+                                  return (
+                                    <TouchableOpacity
+                                      key={cat}
+                                      style={[
+                                        styles.categoryItem,
+                                        isSelected && {
+                                          backgroundColor: hexToRgba(categoryColor, 0.2),
+                                          borderColor: categoryColor,
+                                          borderWidth: 2,
+                                        },
+                                      ]}
+                                      onPress={() => {
+                                        if (isSelected) {
+                                          setSelectedCategory(null);
+                                          setSelectedPeriod(null);
+                                        } else {
+                                          setSelectedCategory(cat);
+                                          setSelectedPeriod(`biweekly-${periodKey}`);
+                                        }
+                                      }}>
+                                      <View style={styles.categoryItemLeft}>
+                                        <View
+                                          style={[
+                                            styles.categoryColorDot,
+                                            { backgroundColor: sliceColorMap[cat] || '#C9CBCF' },
+                                          ]}
+                                        />
+                                        <Text style={styles.categoryItemName}>{cat}</Text>
+                                      </View>
+                                      <Text style={styles.categoryItemAmount}>
+                                        ${amount.toFixed(2)}
+                                      </Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                            </View>
+
+                            {/* Show selected category details */}
+                            {selectedCategory && selectedPeriod === `biweekly-${periodKey}` && (
+                              <View style={styles.categoryDetails}>
+                                <Text style={styles.categoryDetailsTitle}>
+                                  {selectedCategory} - {formatBiweeklyPeriodLabel(periodKey)}
+                                </Text>
+                                <Text style={styles.categoryDetailsAmount}>
+                                  ${biweeklySliceData[selectedCategory].toFixed(2)}
+                                </Text>
+                                <Text style={styles.categoryDetailsPercent}>
+                                  {(
+                                    (biweeklySliceData[selectedCategory] / data.expenses) *
+                                    100
+                                  ).toFixed(1)}
+                                  % of total expenses
+                                </Text>
+                              </View>
+                            )}
+                          </>
                         ) : (
-                          <Text style={styles.noExpensesText}>No expenses this week</Text>
+                          <Text style={styles.noExpensesText}>No expenses this period</Text>
                         )}
                       </>
                     )}
 
                     {/* Budget Comparison Bar Chart */}
-                    {viewMode.week === 'budget' && (
+                    {viewMode.biweekly === 'budget' && (
                       <>
                         {budgetChartData ? (
                           <View style={styles.budgetChartContainer}>
@@ -550,25 +686,12 @@ export default function GraphsScreen() {
                             <HorizontalBudgetBars data={budgetChartData} maxBudget={maxBudgetValue} />
                           </View>
                         ) : (
-                          <Text style={styles.noExpensesText}>No budget data for this week</Text>
+                          <Text style={styles.noExpensesText}>No budget data for this period</Text>
                         )}
                       </>
                     )}
-                
-                <View style={styles.summaryRow}>
-                  <Text style={styles.label}>Income:</Text>
-                  <Text style={styles.incomeAmount}>${data.income.toFixed(2)}</Text>
-                </View>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.label}>Expenses:</Text>
-                  <Text style={styles.expenseAmount}>${data.expenses.toFixed(2)}</Text>
-                </View>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.label}>Net:</Text>
-                  <Text style={[styles.netAmount, data.income - data.expenses >= 0 ? styles.positive : styles.negative]}>
-                    ${(data.income - data.expenses).toFixed(2)}
-                  </Text>
-                </View>
+
+                <PeriodSummaryRollup summary={periodSummary} />
               </View>
             );
           })
@@ -579,33 +702,27 @@ export default function GraphsScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Monthly Summary</Text>
-          {sortedMonths.length > 0 && (
-            <View style={styles.viewModeToggle}>
-              <TouchableOpacity
-                style={[styles.toggleButton, viewMode.month === 'pie' && styles.toggleButtonActive]}
-                onPress={() => setViewMode({ ...viewMode, month: 'pie' })}>
-                <Text style={[styles.toggleButtonText, viewMode.month === 'pie' && styles.toggleButtonTextActive]}>
-                  Pie
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.toggleButton, viewMode.month === 'budget' && styles.toggleButtonActive]}
-                onPress={() => setViewMode({ ...viewMode, month: 'budget' })}>
-                <Text style={[styles.toggleButtonText, viewMode.month === 'budget' && styles.toggleButtonTextActive]}>
-                  Budget
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          {sortedMonths.length > 0 && renderViewToggle('month', ['pie', 'budget'])}
         </View>
+        <PeriodNavigator
+          label={formatMonth(selectedMonthKey)}
+          onPrevious={() => setSelectedMonthKey(getPreviousMonthKey(selectedMonthKey))}
+          onNext={() => setSelectedMonthKey(getNextMonthKey(selectedMonthKey))}
+          isCurrent={selectedMonthKey === currentMonthKey}
+          canGoNext={selectedMonthKey !== currentMonthKey}
+        />
         {sortedMonths.length === 0 ? (
           <Text style={styles.emptyText}>No data yet</Text>
         ) : (
           sortedMonths.map(([month, data]) => {
-            const monthlyCategoryData = getMonthlyCategoryData(transactions, month);
-            const pieData = preparePieChartData(monthlyCategoryData);
+            const monthlySliceData =
+              chartGrouping === 'groups'
+                ? getMonthlyGroupData(transactions, month)
+                : getMonthlyCategoryData(transactions, month);
+            const pieData = preparePieChartData(monthlySliceData, sliceColorMap);
             const monthBudgets = getBudgetsForPeriod('month', month);
             const budgetChartData = prepareBudgetChartData(transactions, monthBudgets, 'month', month);
+            const periodSummary = calculateGroupPeriodSummary(transactions, 'month', month);
             const maxBudgetValue = monthBudgets.length > 0 
               ? Math.max(...monthBudgets.map(b => b.amount)) * 1.2 
               : 100;
@@ -645,12 +762,12 @@ export default function GraphsScreen() {
                         
                         {/* Category Breakdown - Clickable */}
                         <View style={styles.categoryBreakdown}>
-                          {Object.entries(monthlyCategoryData)
+                          {Object.entries(monthlySliceData)
                             .filter(([_, amount]) => amount > 0)
                             .sort((a, b) => b[1] - a[1])
                             .map(([cat, amount]) => {
                               const isSelected = selectedCategory === cat && selectedPeriod === `month-${month}`;
-                              const categoryColor = CATEGORY_COLORS[cat] || '#C9CBCF';
+                              const categoryColor = sliceColorMap[cat] || '#C9CBCF';
                               // Convert hex to rgba for opacity
                               const hexToRgba = (hex, opacity) => {
                                 const r = parseInt(hex.slice(1, 3), 16);
@@ -682,7 +799,7 @@ export default function GraphsScreen() {
                                     <View
                                       style={[
                                         styles.categoryColorDot,
-                                        { backgroundColor: CATEGORY_COLORS[cat] || '#C9CBCF' },
+                                        { backgroundColor: sliceColorMap[cat] || '#C9CBCF' },
                                       ]}
                                     />
                                     <Text style={styles.categoryItemName}>{cat}</Text>
@@ -700,10 +817,10 @@ export default function GraphsScreen() {
                               {selectedCategory} - {formatMonth(month)}
                             </Text>
                             <Text style={styles.categoryDetailsAmount}>
-                              ${monthlyCategoryData[selectedCategory].toFixed(2)}
+                              ${monthlySliceData[selectedCategory].toFixed(2)}
                             </Text>
                             <Text style={styles.categoryDetailsPercent}>
-                              {((monthlyCategoryData[selectedCategory] / data.expenses) * 100).toFixed(1)}% of total expenses
+                              {((monthlySliceData[selectedCategory] / data.expenses) * 100).toFixed(1)}% of total expenses
                             </Text>
                           </View>
                         )}
@@ -727,21 +844,8 @@ export default function GraphsScreen() {
                     )}
                   </>
                 )}
-                
-                <View style={styles.summaryRow}>
-                  <Text style={styles.label}>Income:</Text>
-                  <Text style={styles.incomeAmount}>${data.income.toFixed(2)}</Text>
-                </View>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.label}>Expenses:</Text>
-                  <Text style={styles.expenseAmount}>${data.expenses.toFixed(2)}</Text>
-                </View>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.label}>Net:</Text>
-                  <Text style={[styles.netAmount, data.income - data.expenses >= 0 ? styles.positive : styles.negative]}>
-                    ${(data.income - data.expenses).toFixed(2)}
-                  </Text>
-                </View>
+
+                <PeriodSummaryRollup summary={periodSummary} />
               </View>
             );
           })
@@ -752,33 +856,20 @@ export default function GraphsScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Yearly Summary</Text>
-          {sortedYears.length > 0 && (
-            <View style={styles.viewModeToggle}>
-              <TouchableOpacity
-                style={[styles.toggleButton, viewMode.year === 'pie' && styles.toggleButtonActive]}
-                onPress={() => setViewMode({ ...viewMode, year: 'pie' })}>
-                <Text style={[styles.toggleButtonText, viewMode.year === 'pie' && styles.toggleButtonTextActive]}>
-                  Pie
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.toggleButton, viewMode.year === 'budget' && styles.toggleButtonActive]}
-                onPress={() => setViewMode({ ...viewMode, year: 'budget' })}>
-                <Text style={[styles.toggleButtonText, viewMode.year === 'budget' && styles.toggleButtonTextActive]}>
-                  Budget
-                </Text>
-              </TouchableOpacity>
-            </View>
-          )}
+          {sortedYears.length > 0 && renderViewToggle('year', ['pie', 'budget', 'wealth'], true)}
         </View>
         {sortedYears.length === 0 ? (
           <Text style={styles.emptyText}>No data yet</Text>
         ) : (
           sortedYears.map(([year, data]) => {
-            const yearlyCategoryData = getYearlyCategoryData(transactions, year);
-            const pieData = preparePieChartData(yearlyCategoryData);
+            const yearlySliceData =
+              chartGrouping === 'groups'
+                ? getYearlyGroupData(transactions, year)
+                : getYearlyCategoryData(transactions, year);
+            const pieData = preparePieChartData(yearlySliceData, sliceColorMap);
             const yearBudgets = getBudgetsForPeriod('year', year);
             const budgetChartData = prepareBudgetChartData(transactions, yearBudgets, 'year', year);
+            const periodSummary = calculateGroupPeriodSummary(transactions, 'year', year);
             const maxBudgetValue = yearBudgets.length > 0 
               ? Math.max(...yearBudgets.map(b => b.amount)) * 1.2 
               : 100;
@@ -818,12 +909,12 @@ export default function GraphsScreen() {
                         
                         {/* Category Breakdown - Clickable */}
                         <View style={styles.categoryBreakdown}>
-                          {Object.entries(yearlyCategoryData)
+                          {Object.entries(yearlySliceData)
                             .filter(([_, amount]) => amount > 0)
                             .sort((a, b) => b[1] - a[1])
                             .map(([cat, amount]) => {
                               const isSelected = selectedCategory === cat && selectedPeriod === `year-${year}`;
-                              const categoryColor = CATEGORY_COLORS[cat] || '#C9CBCF';
+                              const categoryColor = sliceColorMap[cat] || '#C9CBCF';
                               // Convert hex to rgba for opacity
                               const hexToRgba = (hex, opacity) => {
                                 const r = parseInt(hex.slice(1, 3), 16);
@@ -855,7 +946,7 @@ export default function GraphsScreen() {
                                     <View
                                       style={[
                                         styles.categoryColorDot,
-                                        { backgroundColor: CATEGORY_COLORS[cat] || '#C9CBCF' },
+                                        { backgroundColor: sliceColorMap[cat] || '#C9CBCF' },
                                       ]}
                                     />
                                     <Text style={styles.categoryItemName}>{cat}</Text>
@@ -873,10 +964,10 @@ export default function GraphsScreen() {
                               {selectedCategory} - {formatYear(year)}
                             </Text>
                             <Text style={styles.categoryDetailsAmount}>
-                              ${yearlyCategoryData[selectedCategory].toFixed(2)}
+                              ${yearlySliceData[selectedCategory].toFixed(2)}
                             </Text>
                             <Text style={styles.categoryDetailsPercent}>
-                              {((yearlyCategoryData[selectedCategory] / data.expenses) * 100).toFixed(1)}% of total expenses
+                              {((yearlySliceData[selectedCategory] / data.expenses) * 100).toFixed(1)}% of total expenses
                             </Text>
                           </View>
                         )}
@@ -900,21 +991,12 @@ export default function GraphsScreen() {
                     )}
                   </>
                 )}
-                
-                <View style={styles.summaryRow}>
-                  <Text style={styles.label}>Income:</Text>
-                  <Text style={styles.incomeAmount}>${data.income.toFixed(2)}</Text>
-                </View>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.label}>Expenses:</Text>
-                  <Text style={styles.expenseAmount}>${data.expenses.toFixed(2)}</Text>
-                </View>
-                <View style={styles.summaryRow}>
-                  <Text style={styles.label}>Net:</Text>
-                  <Text style={[styles.netAmount, data.income - data.expenses >= 0 ? styles.positive : styles.negative]}>
-                    ${(data.income - data.expenses).toFixed(2)}
-                  </Text>
-                </View>
+
+                {viewMode.year === 'wealth' && (
+                  <WealthBuildingView transactions={transactions} period="year" periodKey={year} />
+                )}
+
+                <PeriodSummaryRollup summary={periodSummary} />
               </View>
             );
           })
@@ -936,10 +1018,44 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: COLORS.lightGray,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerLogo: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: COLORS.forestGreen,
+    color: COLORS.primaryDark,
+  },
+  chartGroupingToggle: {
+    flexDirection: 'row',
+    marginTop: 16,
+    backgroundColor: COLORS.lightGray,
+    borderRadius: 8,
+    padding: 4,
+  },
+  groupingButton: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 6,
+    alignItems: 'center',
+  },
+  groupingButtonActive: {
+    backgroundColor: COLORS.white,
+  },
+  groupingButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.gray,
+  },
+  groupingButtonTextActive: {
+    color: COLORS.primaryDark,
   },
   section: {
     marginTop: 20,
@@ -950,15 +1066,55 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
+    gap: 8,
   },
   sectionTitle: {
     fontSize: 22,
     fontWeight: 'bold',
     color: COLORS.darkGray,
+    flexShrink: 1,
+  },
+  periodNavigator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+    backgroundColor: COLORS.white,
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: COLORS.lightGray,
+  },
+  navButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  navButtonText: {
+    fontSize: 13,
+    color: COLORS.seaBlue,
+    fontWeight: '600',
+  },
+  navButtonDisabled: {
+    opacity: 0.35,
+  },
+  navButtonTextDisabled: {
+    color: COLORS.gray,
+  },
+  navLabel: {
+    flex: 1,
+    textAlign: 'center',
+    fontSize: 13,
+    color: COLORS.darkGray,
+    fontWeight: '500',
+    marginHorizontal: 8,
   },
   viewModeToggle: {
     flexDirection: 'row',
     gap: 8,
+  },
+  viewModeToggleCompact: {
+    gap: 4,
+    flexShrink: 1,
   },
   toggleButton: {
     paddingHorizontal: 16,
@@ -968,6 +1124,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.gray,
   },
+  toggleButtonCompact: {
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
   toggleButtonActive: {
     backgroundColor: COLORS.seaBlue,
     borderColor: COLORS.seaBlue,
@@ -976,6 +1137,9 @@ const styles = StyleSheet.create({
     color: COLORS.gray,
     fontSize: 14,
     fontWeight: '600',
+  },
+  toggleButtonTextCompact: {
+    fontSize: 11,
   },
   toggleButtonTextActive: {
     color: COLORS.white,
@@ -1033,7 +1197,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   positive: {
-    color: COLORS.forestGreen,
+    color: COLORS.accent,
   },
   negative: {
     color: COLORS.error,
@@ -1158,6 +1322,57 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: COLORS.gray,
     fontStyle: 'italic',
+  },
+});
+
+const rollupStyles = StyleSheet.create({
+  container: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.lightGray,
+  },
+  title: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: COLORS.primaryDark,
+    marginBottom: 12,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  label: {
+    fontSize: 14,
+    color: COLORS.darkGray,
+    flex: 1,
+  },
+  value: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: COLORS.darkGray,
+  },
+  wealthLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  totalRow: {
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.lightGray,
+  },
+  totalLabel: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: COLORS.darkGray,
+  },
+  totalValue: {
+    fontSize: 15,
+    fontWeight: '700',
   },
 });
 

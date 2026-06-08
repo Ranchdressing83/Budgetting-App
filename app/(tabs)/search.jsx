@@ -1,7 +1,8 @@
 import { useTransactions } from '@/components/TransactionsContext';
 import { CATEGORIES, CATEGORY_COLORS } from '@/constants/categories';
+import { useRouter } from 'expo-router';
 import React, { useState, useMemo } from 'react';
-import { Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 // Get all unique categories from transactions
@@ -27,6 +28,7 @@ function getUniquePlaces(transactions) {
 }
 
 export default function SearchScreen() {
+  const router = useRouter();
   const { transactions } = useTransactions();
   const [searchCategory, setSearchCategory] = useState(null);
   const [searchPlace, setSearchPlace] = useState('');
@@ -111,7 +113,12 @@ export default function SearchScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Search Expenses</Text>
+        <View style={styles.titleRow}>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/home')} activeOpacity={0.7}>
+            <Image source={require('@/assets/images/logo.png')} style={styles.headerLogo} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Search Expenses</Text>
+        </View>
       </View>
 
       <ScrollView style={styles.content}>
@@ -231,9 +238,9 @@ export default function SearchScreen() {
                         style={[
                           styles.dropdownItem,
                           !searchCategory && {
-                            backgroundColor: '#4CAF5020',
+                            backgroundColor: '#9D5CE920',
                             borderLeftWidth: 4,
-                            borderLeftColor: '#4CAF50',
+                            borderLeftColor: '#9D5CE9',
                           },
                         ]}
                         onPress={() => {
@@ -382,10 +389,20 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerLogo: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+  },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#1A0B3C',
   },
   content: {
     flex: 1,
@@ -459,7 +476,7 @@ const styles = StyleSheet.create({
   datePickerDoneButton: {
     paddingHorizontal: 16,
     paddingVertical: 6,
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#9D5CE9',
     borderRadius: 6,
   },
   datePickerDoneText: {
@@ -537,7 +554,7 @@ const styles = StyleSheet.create({
   },
   checkmark: {
     fontSize: 18,
-    color: '#4CAF50',
+    color: '#9D5CE9',
     fontWeight: 'bold',
   },
   input: {

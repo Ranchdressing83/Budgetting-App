@@ -1,20 +1,26 @@
-// Personal color scheme: Forest green with sea blue accents and purple highlights
+// Purple & green theme from app logo
 export const COLORS = {
-  // Primary - Forest Green
-  forestGreen: '#2D5016',        // Main forest green
-  forestGreenLight: '#3A5F2F',   // Lighter forest green
-  forestGreenDark: '#1F3A0F',    // Darker forest green
-  
-  // Accents - Sea Blue
-  seaBlue: '#4A90A4',            // Main sea blue
-  seaBlueLight: '#6BA8C0',      // Lighter sea blue
-  seaBlueDark: '#3A7080',       // Darker sea blue
-  
-  // Highlights - Purple
-  purple: '#7B68EE',             // Main purple accent
-  purpleLight: '#9370DB',       // Lighter purple
-  purpleDark: '#6A5ACD',        // Darker purple
-  
+  // App theme — purple & lime green
+  primary: '#9D5CE9',
+  primaryLight: '#B57EF0',
+  primaryDark: '#1A0B3C',
+  accent: '#76E05B',
+  accentDark: '#5CB848',
+  accentLight: '#EDF9E8',
+
+  // Aliases used across screens
+  purple: '#9D5CE9',
+  purpleLight: '#B57EF0',
+  purpleDark: '#1A0B3C',
+  seaBlue: '#9D5CE9',
+  seaBlueLight: '#B57EF0',
+  seaBlueDark: '#7A3FCF',
+
+  // Budget health green — keep for proximity indicators
+  forestGreen: '#2D5016',
+  forestGreenLight: '#3A5F2F',
+  forestGreenDark: '#1F3A0F',
+
   // Neutrals
   white: '#FFFFFF',
   offWhite: '#F8F9FA',
@@ -22,12 +28,10 @@ export const COLORS = {
   gray: '#8B9BA8',
   darkGray: '#4A5568',
   black: '#1A1F2E',
-  
-  // Status colors (using theme colors)
-  success: '#2D5016',            // Forest green for success
-  warning: '#FFA726',             // Warm orange for warnings
-  error: '#E57373',              // Soft red for errors
-  info: '#4A90A4',               // Sea blue for info
+
+  // Status colors
+  success: '#76E05B',
+  warning: '#FFA726',
+  error: '#E57373',
+  info: '#9D5CE9',
 };
-
-

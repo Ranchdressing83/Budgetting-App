@@ -1,8 +1,17 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import {
+  createDefaultBudgets,
+  findBudget,
+  getBudgetsForPeriodResolved,
+  migrateBudgets,
+  stripLegacyCollegeBudgets,
+} from '../utils/budgetUtils';
 
 const BudgetContext = createContext();
 const STORAGE_KEY = '@budgeting_app_budgets';
+const DEFAULTS_SEEDED_KEY = '@budgeting_app_defaults_seeded';
+const COLLEGE_BUDGETS_REMOVED_KEY = '@budgeting_app_college_budgets_removed';
 
 export function BudgetProvider({ children }) {
   const [budgets, setBudgets] = useState([]);
@@ -21,9 +30,26 @@ export function BudgetProvider({ children }) {
   const loadBudgets = async () => {
     try {
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
+      const defaultsSeeded = await AsyncStorage.getItem(DEFAULTS_SEEDED_KEY);
+      const collegeBudgetsRemoved = await AsyncStorage.getItem(COLLEGE_BUDGETS_REMOVED_KEY);
+
       if (stored) {
-        const parsed = JSON.parse(stored);
+        let parsed = migrateBudgets(JSON.parse(stored));
+
+        if (!collegeBudgetsRemoved) {
+          parsed = stripLegacyCollegeBudgets(parsed);
+          await AsyncStorage.setItem(COLLEGE_BUDGETS_REMOVED_KEY, 'true');
+
+          if (parsed.length === 0) {
+            parsed = createDefaultBudgets();
+          }
+        }
+
         setBudgets(parsed);
+      } else if (!defaultsSeeded) {
+        const defaults = createDefaultBudgets();
+        setBudgets(defaults);
+        await AsyncStorage.setItem(DEFAULTS_SEEDED_KEY, 'true');
       }
     } catch (error) {
       console.error('Error loading budgets:', error);
@@ -58,50 +84,46 @@ export function BudgetProvider({ children }) {
     setBudgets((prev) => prev.filter((b) => b.id !== id));
   };
 
-  const getBudget = (category, period, periodKey) => {
-    // First, try to find an exact match for the period
-    const exactMatch = budgets.find(
-      (b) =>
-        b.category === category &&
-        b.period === period &&
-        b.periodKey === periodKey
-    );
-    if (exactMatch) return exactMatch;
-
-    // If no exact match, check for a recurring budget for this category and period type
-    const recurringBudget = budgets.find(
-      (b) =>
-        b.category === category &&
-        b.period === period &&
-        b.isRecurring === true
-    );
-    return recurringBudget || null;
+  const getBudget = (identifier, period, periodKey) => {
+    return findBudget(budgets, identifier, period, periodKey);
   };
 
   const getBudgetsForPeriod = (period, periodKey) => {
-    const periodBudgets = budgets.filter(
-      (b) => b.period === period && b.periodKey === periodKey && !b.isRecurring
-    );
-    
-    // Also include recurring budgets for this period type
-    const recurringBudgets = budgets.filter(
-      (b) => b.period === period && b.isRecurring === true
-    );
-    
-    // Combine and deduplicate by category
-    const combined = [...periodBudgets];
-    recurringBudgets.forEach((recurring) => {
-      const exists = combined.some((b) => b.category === recurring.category);
-      if (!exists) {
-        combined.push({ ...recurring, periodKey });
-      }
-    });
-    
-    return combined;
+    return getBudgetsForPeriodResolved(budgets, period, periodKey);
   };
 
   const getRecurringBudgets = () => {
     return budgets.filter((b) => b.isRecurring === true);
+  };
+
+  const exportBudgets = async () => {
+    try {
+      const data = {
+        budgets,
+        exportDate: new Date().toISOString(),
+        version: '2.0',
+      };
+      return JSON.stringify(data, null, 2);
+    } catch (error) {
+      console.error('Error exporting budgets:', error);
+      throw error;
+    }
+  };
+
+  const importBudgets = async (jsonData) => {
+    try {
+      const data = JSON.parse(jsonData);
+      if (data.budgets && Array.isArray(data.budgets)) {
+        setBudgets(migrateBudgets(data.budgets));
+        await saveBudgets();
+        return true;
+      } else {
+        throw new Error('Invalid data format');
+      }
+    } catch (error) {
+      console.error('Error importing budgets:', error);
+      throw error;
+    }
   };
 
   const value = {
@@ -113,6 +135,8 @@ export function BudgetProvider({ children }) {
     getBudget,
     getBudgetsForPeriod,
     getRecurringBudgets,
+    exportBudgets,
+    importBudgets,
   };
 
   return (
@@ -129,4 +153,3 @@ export function useBudget() {
   }
   return context;
 }
-
