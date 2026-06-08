@@ -2,7 +2,18 @@ import { useTransactions } from '@/components/TransactionsContext';
 import { CATEGORIES, CATEGORY_COLORS } from '@/constants/categories';
 import { useRouter } from 'expo-router';
 import React, { useState, useMemo } from 'react';
-import { Image, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  Alert,
+  Image,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 // Get all unique categories from transactions
@@ -29,10 +40,19 @@ function getUniquePlaces(transactions) {
 
 export default function SearchScreen() {
   const router = useRouter();
-  const { transactions } = useTransactions();
+  const { transactions, updateTransaction, deleteTransaction } = useTransactions();
   const [searchCategory, setSearchCategory] = useState(null);
   const [searchPlace, setSearchPlace] = useState('');
   const [searchDescription, setSearchDescription] = useState('');
+
+  const [editingId, setEditingId] = useState(null);
+  const [editAmount, setEditAmount] = useState('');
+  const [editCategory, setEditCategory] = useState('Eating Out');
+  const [editPlace, setEditPlace] = useState('');
+  const [editDate, setEditDate] = useState(null);
+  const [editDescription, setEditDescription] = useState('');
+  const [showEditCategoryDropdown, setShowEditCategoryDropdown] = useState(false);
+  const [showEditDatePicker, setShowEditDatePicker] = useState(false);
   
   // Date range state - default to past month
   const today = new Date();
@@ -108,6 +128,59 @@ export default function SearchScreen() {
 
   const formatDateDisplay = (date) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  const handleEdit = (transaction) => {
+    setEditingId(transaction.id);
+    setEditAmount(transaction.amount.toString());
+    setEditCategory(transaction.category);
+    setEditPlace(transaction.place || '');
+    setEditDate(transaction.date ? new Date(transaction.date) : null);
+    setEditDescription(transaction.description || '');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditAmount('');
+    setEditCategory('Eating Out');
+    setEditPlace('');
+    setEditDate(null);
+    setEditDescription('');
+    setShowEditCategoryDropdown(false);
+    setShowEditDatePicker(false);
+  };
+
+  const handleSaveEdit = () => {
+    const numAmount = parseFloat(editAmount);
+    if (!editAmount || isNaN(numAmount) || numAmount <= 0) {
+      Alert.alert('Invalid Amount', 'Please enter a valid amount');
+      return;
+    }
+
+    const expenseDate = editDate || new Date();
+    updateTransaction(editingId, {
+      amount: numAmount,
+      category: editCategory,
+      place: editPlace.trim() || undefined,
+      description: editDescription.trim() || undefined,
+      date: expenseDate.toISOString(),
+    });
+
+    handleCancelEdit();
+  };
+
+  const handleDelete = (id) => {
+    Alert.alert('Delete Expense', 'Are you sure?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: () => {
+          deleteTransaction(id);
+          if (editingId === id) handleCancelEdit();
+        },
+      },
+    ]);
   };
 
   return (
@@ -365,7 +438,17 @@ export default function SearchScreen() {
                       {transaction.description && <Text style={styles.transactionDescription}>{transaction.description}</Text>}
                       <Text style={styles.transactionDate}>{formatDate(transaction.date)}</Text>
                     </View>
-                    <Text style={styles.transactionAmount}>${transaction.amount.toFixed(2)}</Text>
+                    <View style={styles.transactionRight}>
+                      <Text style={styles.transactionAmount}>${transaction.amount.toFixed(2)}</Text>
+                      <View style={styles.transactionActions}>
+                        <TouchableOpacity onPress={() => handleEdit(transaction)}>
+                          <Text style={styles.editButton}>Edit</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleDelete(transaction.id)}>
+                          <Text style={styles.deleteButton}>Delete</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
                   </View>
                 ))}
               </View>
@@ -373,6 +456,151 @@ export default function SearchScreen() {
           </>
         )}
       </ScrollView>
+
+      <Modal
+        visible={editingId !== null}
+        transparent
+        animationType="slide"
+        onRequestClose={handleCancelEdit}>
+        <View style={styles.editModalOverlay}>
+          <View style={styles.editModalContent}>
+            <ScrollView keyboardShouldPersistTaps="handled">
+              <Text style={styles.editModalTitle}>Edit Expense</Text>
+
+              <Text style={styles.fieldLabel}>Amount</Text>
+              <TextInput
+                style={styles.input}
+                value={editAmount}
+                onChangeText={setEditAmount}
+                placeholder="0.00"
+                keyboardType="decimal-pad"
+              />
+
+              <Text style={styles.fieldLabel}>Category</Text>
+              <TouchableOpacity
+                style={styles.dropdownButton}
+                onPress={() => setShowEditCategoryDropdown(true)}>
+                <Text style={styles.dropdownButtonText}>{editCategory}</Text>
+                <View
+                  style={[
+                    styles.categoryColorIndicator,
+                    { backgroundColor: CATEGORY_COLORS[editCategory] || '#9E9E9E' },
+                  ]}
+                />
+              </TouchableOpacity>
+
+              <Text style={styles.fieldLabel}>Place (Optional)</Text>
+              <TextInput
+                style={styles.input}
+                value={editPlace}
+                onChangeText={setEditPlace}
+                placeholder="e.g., Walmart, Amazon"
+                autoCapitalize="words"
+              />
+
+              <Text style={styles.fieldLabel}>Date</Text>
+              <TouchableOpacity style={styles.dateButton} onPress={() => setShowEditDatePicker(true)}>
+                <Text style={styles.dateButtonText}>
+                  {editDate ? formatDateDisplay(editDate) : 'Today'}
+                </Text>
+              </TouchableOpacity>
+              {editDate && (
+                <TouchableOpacity style={styles.clearDateButton} onPress={() => setEditDate(null)}>
+                  <Text style={styles.clearDateText}>Clear date</Text>
+                </TouchableOpacity>
+              )}
+              {showEditDatePicker && (
+                <View style={styles.datePickerContainer}>
+                  <View style={styles.datePickerWrapper}>
+                    <View style={styles.datePickerHeader}>
+                      <Text style={styles.datePickerHeaderText}>Select Date</Text>
+                      <TouchableOpacity
+                        onPress={() => setShowEditDatePicker(false)}
+                        style={styles.datePickerDoneButton}>
+                        <Text style={styles.datePickerDoneText}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      value={editDate || new Date()}
+                      mode="date"
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      onChange={(event, selectedDate) => {
+                        if (Platform.OS === 'android') setShowEditDatePicker(false);
+                        if (selectedDate) setEditDate(selectedDate);
+                      }}
+                      maximumDate={new Date()}
+                      style={styles.datePicker}
+                    />
+                  </View>
+                </View>
+              )}
+
+              <Text style={styles.fieldLabel}>Description (Optional)</Text>
+              <TextInput
+                style={styles.input}
+                value={editDescription}
+                onChangeText={setEditDescription}
+                placeholder="e.g., lunch, birthday gift"
+                multiline
+                numberOfLines={3}
+              />
+
+              <View style={styles.editButtons}>
+                <TouchableOpacity style={styles.cancelButton} onPress={handleCancelEdit}>
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.saveButton} onPress={handleSaveEdit}>
+                  <Text style={styles.saveButtonText}>Save</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showEditCategoryDropdown}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowEditCategoryDropdown(false)}>
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowEditCategoryDropdown(false)}>
+          <View style={styles.dropdownMenu} onStartShouldSetResponder={() => true}>
+            <ScrollView style={styles.dropdownScrollView}>
+              {CATEGORIES.map((cat) => {
+                const isSelected = editCategory === cat;
+                const categoryColor = CATEGORY_COLORS[cat] || '#9E9E9E';
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[
+                      styles.dropdownItem,
+                      isSelected && {
+                        backgroundColor: categoryColor + '20',
+                        borderLeftWidth: 4,
+                        borderLeftColor: categoryColor,
+                      },
+                    ]}
+                    onPress={() => {
+                      setEditCategory(cat);
+                      setShowEditCategoryDropdown(false);
+                    }}>
+                    <View style={styles.dropdownItemLeft}>
+                      <View style={[styles.categoryColorDot, { backgroundColor: categoryColor }]} />
+                      <Text style={[styles.dropdownItemText, isSelected && { fontWeight: '600' }]}>
+                        {cat}
+                      </Text>
+                    </View>
+                    {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
@@ -652,6 +880,88 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     color: '#d32f2f',
+    marginBottom: 4,
+  },
+  transactionRight: {
+    alignItems: 'flex-end',
+  },
+  transactionActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  editButton: {
+    fontSize: 14,
+    color: '#9D5CE9',
+  },
+  deleteButton: {
+    fontSize: 14,
+    color: '#d32f2f',
+  },
+  editModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  editModalContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+    padding: 20,
+    maxHeight: '85%',
+  },
+  editModalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 16,
+  },
+  fieldLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  clearDateButton: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    marginBottom: 4,
+  },
+  clearDateText: {
+    fontSize: 14,
+    color: '#9D5CE9',
+  },
+  editButtons: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  cancelButton: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ddd',
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#9D5CE9',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
   emptyContainer: {
     padding: 40,
