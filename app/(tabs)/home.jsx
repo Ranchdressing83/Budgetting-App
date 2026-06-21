@@ -1,3 +1,4 @@
+import { useAuth } from '@/components/AuthContext';
 import { useBudget } from '@/components/BudgetContext';
 import DashboardContent from '@/components/DashboardContent';
 import { useTransactions } from '@/components/TransactionsContext';
@@ -68,6 +69,7 @@ function SocialSpendingSection({ social }) {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { logOut } = useAuth();
   const { transactions } = useTransactions();
   const { budgets } = useBudget();
 
@@ -88,10 +90,13 @@ export default function HomeScreen() {
           <TouchableOpacity onPress={() => router.push('/(tabs)/home')} activeOpacity={0.7}>
             <Image source={require('@/assets/images/logo.png')} style={styles.headerLogo} />
           </TouchableOpacity>
-          <View>
+          <View style={styles.titleContent}>
             <Text style={styles.title}>Home</Text>
             <Text style={styles.subtitle}>Smart analysis of your spending patterns</Text>
           </View>
+          <TouchableOpacity onPress={logOut} style={styles.signOutButton}>
+            <Text style={styles.signOutText}>Sign out</Text>
+          </TouchableOpacity>
         </View>
       </View>
 
@@ -140,6 +145,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+  },
+  titleContent: {
+    flex: 1,
+  },
+  signOutButton: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  signOutText: {
+    color: COLORS.primary,
+    fontSize: 13,
+    fontWeight: '600',
   },
   headerLogo: {
     width: 36,

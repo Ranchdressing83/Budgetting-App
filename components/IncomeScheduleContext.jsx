@@ -1,5 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext } from 'react';
+import { useFirestoreSync } from '@/hooks/useFirestoreSync';
 
 /**
  * Income schedule model:
@@ -13,42 +13,13 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
  * }
  */
 const IncomeScheduleContext = createContext();
-const STORAGE_KEY = '@budgeting_app_income_schedules';
 
 export function IncomeScheduleProvider({ children }) {
-  const [incomeSchedules, setIncomeSchedules] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    loadIncomeSchedules();
-  }, []);
-
-  useEffect(() => {
-    if (!isLoading) {
-      saveIncomeSchedules();
-    }
-  }, [incomeSchedules, isLoading]);
-
-  const loadIncomeSchedules = async () => {
-    try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        setIncomeSchedules(JSON.parse(stored));
-      }
-    } catch (error) {
-      console.error('Error loading income schedules:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const saveIncomeSchedules = async () => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(incomeSchedules));
-    } catch (error) {
-      console.error('Error saving income schedules:', error);
-    }
-  };
+  const {
+    items: incomeSchedules,
+    setItems: setIncomeSchedules,
+    isLoading,
+  } = useFirestoreSync('incomeSchedules');
 
   const addIncomeSchedule = (schedule) => {
     const newSchedule = {

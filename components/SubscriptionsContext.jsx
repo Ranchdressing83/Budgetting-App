@@ -1,44 +1,14 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext } from 'react';
+import { useFirestoreSync } from '@/hooks/useFirestoreSync';
 
 const SubscriptionsContext = createContext();
-const STORAGE_KEY = '@budgeting_app_subscriptions';
 
 export function SubscriptionsProvider({ children }) {
-  const [subscriptions, setSubscriptions] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    loadSubscriptions();
-  }, []);
-
-  useEffect(() => {
-    if (!isLoading) {
-      saveSubscriptions();
-    }
-  }, [subscriptions, isLoading]);
-
-  const loadSubscriptions = async () => {
-    try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setSubscriptions(parsed);
-      }
-    } catch (error) {
-      console.error('Error loading subscriptions:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const saveSubscriptions = async () => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(subscriptions));
-    } catch (error) {
-      console.error('Error saving subscriptions:', error);
-    }
-  };
+  const {
+    items: subscriptions,
+    setItems: setSubscriptions,
+    isLoading,
+  } = useFirestoreSync('subscriptions');
 
   const addSubscription = (subscription) => {
     const newSubscription = {
@@ -80,4 +50,3 @@ export function useSubscriptions() {
   }
   return context;
 }
-

@@ -31,6 +31,7 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
 
 # typescript
@@ -48,6 +49,14 @@ app-example
 *budgets*.json
 data/
 storage/
+backup/
 *.db
 *.sqlite
 *.sqlite3
+
+# Firebase deploy cache
+.firebase/
+
+# Cursor agent tooling
+.agents/
+skills-lock.json

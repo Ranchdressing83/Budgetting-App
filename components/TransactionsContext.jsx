@@ -1,125 +1,91 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect } from 'react';
 import { normalizeCategory } from '../constants/categories';
 import { applyScheduleSync, removeScheduleTransactions } from '../utils/incomeScheduleUtils';
+import { useFirestoreSync } from '@/hooks/useFirestoreSync';
 
-// Create the context - this will hold our transactions array and functions to modify it
 const TransactionsContext = createContext();
 
-// Storage key for persisting transactions
-const STORAGE_KEY = '@budgeting_app_transactions';
+function normalizeTransactions(transactions) {
+  return transactions.map((transaction) => ({
+    ...transaction,
+    category: transaction.category
+      ? normalizeCategory(transaction.category)
+      : transaction.category,
+  }));
+}
 
 export function TransactionsProvider({ children }) {
-  // State to hold all transactions
-  // Each transaction: { id, type: "income" | "expense", amount, category, date }
-  const [transactions, setTransactions] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { items: transactions, setItems: setTransactions, isLoading } = useFirestoreSync(
+    'transactions'
+  );
 
-  // Load transactions from AsyncStorage when app starts
   useEffect(() => {
-    loadTransactions();
-  }, []);
-
-  // Save transactions to AsyncStorage whenever they change
-  useEffect(() => {
-    if (!isLoading) {
-      saveTransactions();
+    if (isLoading || transactions.length === 0) {
+      return;
     }
-  }, [transactions, isLoading]);
 
-  // Load transactions from persistent storage
-  const loadTransactions = async () => {
-    try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        setTransactions(
-          parsed.map((transaction) => ({
-            ...transaction,
-            category: transaction.category
-              ? normalizeCategory(transaction.category)
-              : transaction.category,
-          }))
-        );
-      }
-    } catch (error) {
-      console.error('Error loading transactions:', error);
-    } finally {
-      setIsLoading(false);
+    const normalized = normalizeTransactions(transactions);
+    if (JSON.stringify(normalized) !== JSON.stringify(transactions)) {
+      setTransactions(normalized);
     }
-  };
+  }, [isLoading, transactions, setTransactions]);
 
-  // Save transactions to persistent storage
-  const saveTransactions = async () => {
-    try {
-      // Convert array to JSON string for storage
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(transactions));
-    } catch (error) {
-      console.error('Error saving transactions:', error);
-    }
-  };
-
-  // Add a new transaction
   const addTransaction = (transaction) => {
     const newTransaction = {
       ...transaction,
-      id: Date.now().toString(), // Simple ID using timestamp
-      date: transaction.date || new Date().toISOString(), // Use provided date or current time
+      id: Date.now().toString(),
+      date: transaction.date || new Date().toISOString(),
     };
     setTransactions((prev) => [...prev, newTransaction]);
   };
 
-  // Delete a transaction by ID
   const deleteTransaction = (id) => {
     setTransactions((prev) => prev.filter((t) => t.id !== id));
   };
 
-  // Update an existing transaction
   const updateTransaction = (id, updates) => {
     setTransactions((prev) =>
       prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
     );
   };
 
-  const syncScheduledIncome = useCallback((schedule) => {
-    const now = new Date();
-    setTransactions((prev) =>
-      applyScheduleSync(prev, schedule, now.getFullYear(), now.getMonth())
-    );
-  }, []);
+  const syncScheduledIncome = useCallback(
+    (schedule) => {
+      const now = new Date();
+      setTransactions((prev) =>
+        applyScheduleSync(prev, schedule, now.getFullYear(), now.getMonth())
+      );
+    },
+    [setTransactions]
+  );
 
-  const removeScheduledIncome = useCallback((scheduleId) => {
-    setTransactions((prev) => removeScheduleTransactions(prev, scheduleId));
-  }, []);
+  const removeScheduledIncome = useCallback(
+    (scheduleId) => {
+      setTransactions((prev) => removeScheduleTransactions(prev, scheduleId));
+    },
+    [setTransactions]
+  );
 
-  // Get all income transactions
   const getIncome = () => {
     return transactions.filter((t) => t.type === 'income');
   };
 
-  // Get all expense transactions
   const getExpenses = () => {
     return transactions.filter((t) => t.type === 'expense');
   };
 
-  // Calculate total income
   const getTotalIncome = () => {
     return getIncome().reduce((sum, t) => sum + t.amount, 0);
   };
 
-  // Calculate total expenses
   const getTotalExpenses = () => {
     return getExpenses().reduce((sum, t) => sum + t.amount, 0);
   };
 
-  // Calculate net (income - expenses)
   const getNet = () => {
     return getTotalIncome() - getTotalExpenses();
   };
 
-  // Export transactions as JSON
-  // NOTE: Ready for future use - can be called to export data for backup/transfer
-  // Returns: JSON string with transactions data
   const exportTransactions = async () => {
     try {
       const data = {
@@ -134,20 +100,14 @@ export function TransactionsProvider({ children }) {
     }
   };
 
-  // Import transactions from JSON
-  // NOTE: Ready for future use - can be called to import data from backup/transfer
-  // Parameters: jsonData (string) - JSON string containing transactions array
   const importTransactions = async (jsonData) => {
     try {
       const data = JSON.parse(jsonData);
-      // Validate data structure
       if (data.transactions && Array.isArray(data.transactions)) {
-        setTransactions(data.transactions);
-        await saveTransactions();
+        setTransactions(normalizeTransactions(data.transactions));
         return true;
-      } else {
-        throw new Error('Invalid data format');
       }
+      throw new Error('Invalid data format');
     } catch (error) {
       console.error('Error importing transactions:', error);
       throw error;
@@ -178,7 +138,6 @@ export function TransactionsProvider({ children }) {
   );
 }
 
-// Custom hook to use the context in components
 export function useTransactions() {
   const context = useContext(TransactionsContext);
   if (!context) {
@@ -186,4 +145,3 @@ export function useTransactions() {
   }
   return context;
 }
-

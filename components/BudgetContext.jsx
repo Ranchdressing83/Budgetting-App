@@ -1,5 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef } from 'react';
 import {
   createDefaultBudgets,
   findBudget,
@@ -7,64 +6,66 @@ import {
   migrateBudgets,
   stripLegacyCollegeBudgets,
 } from '../utils/budgetUtils';
+import { useFirestoreSync } from '@/hooks/useFirestoreSync';
 
 const BudgetContext = createContext();
-const STORAGE_KEY = '@budgeting_app_budgets';
-const DEFAULTS_SEEDED_KEY = '@budgeting_app_defaults_seeded';
-const COLLEGE_BUDGETS_REMOVED_KEY = '@budgeting_app_college_budgets_removed';
+
+const BUDGET_SYNC_OPTIONS = {
+  getDefaultItems: () => [],
+  getDefaultMeta: () => ({
+    defaultsSeeded: false,
+    collegeBudgetsRemoved: false,
+  }),
+};
 
 export function BudgetProvider({ children }) {
-  const [budgets, setBudgets] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const {
+    items: budgets,
+    setItems: setBudgets,
+    meta,
+    setMeta,
+    isLoading,
+    isReady,
+  } = useFirestoreSync('budgets', BUDGET_SYNC_OPTIONS);
+  const hasRunMigrations = useRef(false);
 
   useEffect(() => {
-    loadBudgets();
-  }, []);
-
-  useEffect(() => {
-    if (!isLoading) {
-      saveBudgets();
+    if (!isReady || isLoading || hasRunMigrations.current) {
+      return;
     }
-  }, [budgets, isLoading]);
 
-  const loadBudgets = async () => {
-    try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEY);
-      const defaultsSeeded = await AsyncStorage.getItem(DEFAULTS_SEEDED_KEY);
-      const collegeBudgetsRemoved = await AsyncStorage.getItem(COLLEGE_BUDGETS_REMOVED_KEY);
+    let nextBudgets = migrateBudgets(budgets);
+    const nextMeta = { ...meta };
+    let changed = false;
 
-      if (stored) {
-        let parsed = migrateBudgets(JSON.parse(stored));
+    if (!meta.collegeBudgetsRemoved) {
+      nextBudgets = stripLegacyCollegeBudgets(nextBudgets);
+      nextMeta.collegeBudgetsRemoved = true;
+      changed = true;
 
-        if (!collegeBudgetsRemoved) {
-          parsed = stripLegacyCollegeBudgets(parsed);
-          await AsyncStorage.setItem(COLLEGE_BUDGETS_REMOVED_KEY, 'true');
-
-          if (parsed.length === 0) {
-            parsed = createDefaultBudgets();
-          }
-        }
-
-        setBudgets(parsed);
-      } else if (!defaultsSeeded) {
-        const defaults = createDefaultBudgets();
-        setBudgets(defaults);
-        await AsyncStorage.setItem(DEFAULTS_SEEDED_KEY, 'true');
+      if (nextBudgets.length === 0) {
+        nextBudgets = createDefaultBudgets();
+        nextMeta.defaultsSeeded = true;
       }
-    } catch (error) {
-      console.error('Error loading budgets:', error);
-    } finally {
-      setIsLoading(false);
+    } else if (budgets.length === 0 && !meta.defaultsSeeded) {
+      nextBudgets = createDefaultBudgets();
+      nextMeta.defaultsSeeded = true;
+      changed = true;
     }
-  };
 
-  const saveBudgets = async () => {
-    try {
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(budgets));
-    } catch (error) {
-      console.error('Error saving budgets:', error);
+    const migratedBudgets = migrateBudgets(budgets);
+    if (JSON.stringify(migratedBudgets) !== JSON.stringify(budgets)) {
+      nextBudgets = migratedBudgets;
+      changed = true;
     }
-  };
+
+    hasRunMigrations.current = true;
+
+    if (changed) {
+      setBudgets(nextBudgets);
+      setMeta(nextMeta);
+    }
+  }, [isReady, isLoading, budgets, meta, setBudgets, setMeta]);
 
   const addBudget = (budget) => {
     const newBudget = {
@@ -115,11 +116,9 @@ export function BudgetProvider({ children }) {
       const data = JSON.parse(jsonData);
       if (data.budgets && Array.isArray(data.budgets)) {
         setBudgets(migrateBudgets(data.budgets));
-        await saveBudgets();
         return true;
-      } else {
-        throw new Error('Invalid data format');
       }
+      throw new Error('Invalid data format');
     } catch (error) {
       console.error('Error importing budgets:', error);
       throw error;
