@@ -1,5 +1,6 @@
 import { useTransactions } from '@/components/TransactionsContext';
 import { CATEGORIES, CATEGORY_COLORS } from '@/constants/categories';
+import { confirmDelete } from '@/utils/confirmAlert';
 import { useRouter } from 'expo-router';
 import React, { useState, useMemo } from 'react';
 import {
@@ -170,17 +171,10 @@ export default function SearchScreen() {
   };
 
   const handleDelete = (id) => {
-    Alert.alert('Delete Expense', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          deleteTransaction(id);
-          if (editingId === id) handleCancelEdit();
-        },
-      },
-    ]);
+    confirmDelete('Delete Expense', 'Are you sure?', () => {
+      deleteTransaction(id);
+      if (editingId === id) handleCancelEdit();
+    });
   };
 
   return (
