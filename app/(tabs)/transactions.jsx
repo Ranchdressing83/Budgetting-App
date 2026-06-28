@@ -39,6 +39,7 @@ import {
   parseDueDay,
   parseDueMonth,
 } from '@/utils/subscriptionUtils';
+import { confirmDelete } from '@/utils/confirmAlert';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -393,14 +394,7 @@ export default function TransactionsScreen() {
   };
 
   const handleDeleteExpense = (id) => {
-    Alert.alert('Delete Expense', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => deleteTransaction(id),
-      },
-    ]);
+    confirmDelete('Delete Expense', 'Are you sure?', () => deleteTransaction(id));
   };
 
   // Income handlers
@@ -423,14 +417,7 @@ export default function TransactionsScreen() {
   };
 
   const handleDeleteIncome = (id) => {
-    Alert.alert('Delete Income', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => deleteTransaction(id),
-      },
-    ]);
+    confirmDelete('Delete Income', 'Are you sure?', () => deleteTransaction(id));
   };
 
   const resetSalaryForm = () => {
@@ -499,19 +486,16 @@ export default function TransactionsScreen() {
   const handleDeleteSalarySchedule = () => {
     if (!primarySalarySchedule) return;
 
-    Alert.alert('Delete Salary Schedule', 'This removes your schedule and its scheduled paycheck entries.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          removeScheduledIncome(primarySalarySchedule.id);
-          deleteIncomeSchedule(primarySalarySchedule.id);
-          resetSalaryForm();
-          setShowSalaryForm(true);
-        },
-      },
-    ]);
+    confirmDelete(
+      'Delete Salary Schedule',
+      'This removes your schedule and its scheduled paycheck entries.',
+      () => {
+        removeScheduledIncome(primarySalarySchedule.id);
+        deleteIncomeSchedule(primarySalarySchedule.id);
+        resetSalaryForm();
+        setShowSalaryForm(true);
+      }
+    );
   };
 
   const handleSyncPaychecks = () => {
@@ -688,14 +672,7 @@ export default function TransactionsScreen() {
   };
 
   const handleDeleteSubscription = (id) => {
-    Alert.alert('Delete Fixed Cost', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => deleteSubscription(id),
-      },
-    ]);
+    confirmDelete('Delete Fixed Cost', 'Are you sure?', () => deleteSubscription(id));
   };
 
   // Budget handlers
@@ -838,14 +815,7 @@ export default function TransactionsScreen() {
   };
 
   const handleDeleteBudget = (id) => {
-    Alert.alert('Delete Budget', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => deleteBudget(id),
-      },
-    ]);
+    confirmDelete('Delete Budget', 'Are you sure?', () => deleteBudget(id));
   };
 
   const formatDateDisplay = (date) => {
