@@ -1,5 +1,6 @@
 import { useTransactions } from '@/components/TransactionsContext';
 import { CATEGORIES, CATEGORY_COLORS } from '@/constants/categories';
+import { COLORS } from '@/constants/colors';
 import { confirmDelete } from '@/utils/confirmAlert';
 import { useRouter } from 'expo-router';
 import React, { useState, useMemo } from 'react';
@@ -602,10 +603,10 @@ export default function SearchScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.pageBackground,
   },
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.tileBackground,
     padding: 20,
     paddingTop: 60,
     borderBottomWidth: 1,
@@ -630,7 +631,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   section: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.tileBackground,
     padding: 20,
     marginBottom: 10,
   },
@@ -801,7 +802,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   resultsSummary: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.tileBackground,
     padding: 20,
     marginBottom: 10,
     borderBottomWidth: 1,
@@ -830,7 +831,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.tileBackground,
     padding: 16,
     marginBottom: 1,
     borderBottomWidth: 1,
@@ -897,7 +898,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   editModalContent: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.tileBackground,
     borderTopLeftRadius: 16,
     borderTopRightRadius: 16,
     padding: 20,

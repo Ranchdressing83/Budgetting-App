@@ -1014,10 +1014,10 @@ export default function GraphsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.offWhite,
+    backgroundColor: COLORS.pageBackground,
   },
   header: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.tileBackground,
     padding: 20,
     paddingTop: 60,
     borderBottomWidth: 1,
@@ -1052,7 +1052,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   groupingButtonActive: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.tileBackground,
   },
   groupingButtonText: {
     fontSize: 14,
@@ -1084,7 +1084,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 12,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.tileBackground,
     borderRadius: 8,
     padding: 10,
     borderWidth: 1,
@@ -1153,7 +1153,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
     marginBottom: 16,
     alignItems: 'center',
-    backgroundColor: COLORS.offWhite,
+    backgroundColor: COLORS.tileBackground,
     borderRadius: 8,
     paddingVertical: 16,
     paddingHorizontal: 10,
@@ -1165,7 +1165,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   summaryCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.tileBackground,
     padding: 16,
     borderRadius: 8,
     marginBottom: 12,
@@ -1211,7 +1211,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.tileBackground,
     padding: 16,
     borderRadius: 8,
     marginBottom: 8,
@@ -1237,7 +1237,7 @@ const styles = StyleSheet.create({
   chartContainer: {
     alignItems: 'center',
     marginVertical: 16,
-    backgroundColor: COLORS.offWhite,
+    backgroundColor: COLORS.tileBackground,
     borderRadius: 8,
     paddingVertical: 10,
   },
@@ -1259,7 +1259,7 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 6,
     borderRadius: 8,
-    backgroundColor: COLORS.offWhite,
+    backgroundColor: COLORS.tileBackground,
     borderWidth: 1,
     borderColor: COLORS.lightGray,
   },
@@ -1306,7 +1306,7 @@ const styles = StyleSheet.create({
   categoryDetails: {
     marginTop: 12,
     padding: 16,
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.tileBackground,
     borderRadius: 8,
     borderWidth: 2,
     borderColor: COLORS.purple,
