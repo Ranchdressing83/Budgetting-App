@@ -2,6 +2,7 @@ import {
   CATEGORIES,
   countsTowardOverallBudget,
   DEFAULT_OVERALL_CATEGORIES,
+  EATING_OUT_CATEGORIES,
   normalizeCategory,
   SOCIAL_CATEGORIES,
 } from '../constants/categories';
@@ -33,8 +34,8 @@ export const DEFAULT_BUDGET_TEMPLATES = [
   },
   {
     name: 'Eating Out',
-    budgetType: BUDGET_TYPE_CATEGORY,
-    categories: ['Eating Out'],
+    budgetType: BUDGET_TYPE_GROUP,
+    categories: EATING_OUT_CATEGORIES,
   },
 ];
 
@@ -86,12 +87,16 @@ export function categoryInBudget(budget, category) {
 export function migrateBudget(budget) {
   const budgetType = getBudgetType(budget);
   const name = getBudgetName(budget);
-  const categories = getBudgetCategories(budget).map(normalizeCategory);
+  let categories = getBudgetCategories(budget).map(normalizeCategory);
+
+  if (name === 'Eating Out') {
+    categories = [...EATING_OUT_CATEGORIES];
+  }
 
   return {
     ...budget,
     name,
-    budgetType,
+    budgetType: name === 'Eating Out' ? BUDGET_TYPE_GROUP : budgetType,
     categories,
     category: budget.category ? normalizeCategory(budget.category) : budget.category,
   };

@@ -91,14 +91,14 @@ export default function TransactionsScreen() {
 
   // Expenses state
   const [amount, setAmount] = useState('');
-  const [category, setCategory] = useState('Eating Out');
+  const [category, setCategory] = useState('Eating Out(Solo)');
   const [place, setPlace] = useState('');
   const [selectedDate, setSelectedDate] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [description, setDescription] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editAmount, setEditAmount] = useState('');
-  const [editCategory, setEditCategory] = useState('Eating Out');
+  const [editCategory, setEditCategory] = useState('Eating Out(Solo)');
   const [editPlace, setEditPlace] = useState('');
   const [editDate, setEditDate] = useState(null);
   const [showEditDatePicker, setShowEditDatePicker] = useState(false);
@@ -117,7 +117,7 @@ export default function TransactionsScreen() {
 
   // Subscription state
   const [subscriptionAmount, setSubscriptionAmount] = useState('');
-  const [subscriptionCategory, setSubscriptionCategory] = useState('Eating Out');
+  const [subscriptionCategory, setSubscriptionCategory] = useState('Eating Out(Solo)');
   const [subscriptionName, setSubscriptionName] = useState('');
   const [subscriptionFrequency, setSubscriptionFrequency] = useState('monthly');
   const [subscriptionDueDay, setSubscriptionDueDay] = useState('1');
@@ -125,7 +125,7 @@ export default function TransactionsScreen() {
   const [subscriptionDueDayOfWeek, setSubscriptionDueDayOfWeek] = useState('1');
   const [editingSubscriptionId, setEditingSubscriptionId] = useState(null);
   const [editSubscriptionAmount, setEditSubscriptionAmount] = useState('');
-  const [editSubscriptionCategory, setEditSubscriptionCategory] = useState('Eating Out');
+  const [editSubscriptionCategory, setEditSubscriptionCategory] = useState('Eating Out(Solo)');
   const [editSubscriptionName, setEditSubscriptionName] = useState('');
   const [editSubscriptionFrequency, setEditSubscriptionFrequency] = useState('monthly');
   const [editSubscriptionDueDay, setEditSubscriptionDueDay] = useState('1');
@@ -138,7 +138,7 @@ export default function TransactionsScreen() {
   const [budgetAmount, setBudgetAmount] = useState('');
   const [budgetType, setBudgetType] = useState(BUDGET_TYPE_CATEGORY);
   const [budgetName, setBudgetName] = useState('');
-  const [budgetCategories, setBudgetCategories] = useState(['Eating Out']);
+  const [budgetCategories, setBudgetCategories] = useState(['Eating Out(Solo)']);
   const [budgetPeriod, setBudgetPeriod] = useState('month');
   const [selectedPeriodDate, setSelectedPeriodDate] = useState(new Date());
   const [showPeriodDatePicker, setShowPeriodDatePicker] = useState(false);
@@ -146,7 +146,7 @@ export default function TransactionsScreen() {
   const [editBudgetAmount, setEditBudgetAmount] = useState('');
   const [editBudgetType, setEditBudgetType] = useState(BUDGET_TYPE_CATEGORY);
   const [editBudgetName, setEditBudgetName] = useState('');
-  const [editBudgetCategories, setEditBudgetCategories] = useState(['Eating Out']);
+  const [editBudgetCategories, setEditBudgetCategories] = useState(['Eating Out(Solo)']);
   const [editBudgetPeriod, setEditBudgetPeriod] = useState('month');
   const [editPeriodDate, setEditPeriodDate] = useState(new Date());
   const [showEditPeriodDatePicker, setShowEditPeriodDatePicker] = useState(false);
@@ -349,7 +349,7 @@ export default function TransactionsScreen() {
 
     checkBudgetAlerts(numAmount, category, expenseDate.toISOString());
     setAmount('');
-    setCategory('Eating Out');
+    setCategory('Eating Out(Solo)');
     setPlace('');
     setSelectedDate(null);
     setDescription('');
@@ -368,7 +368,7 @@ export default function TransactionsScreen() {
   const handleCancelEdit = () => {
     setEditingId(null);
     setEditAmount('');
-    setEditCategory('Eating Out');
+    setEditCategory('Eating Out(Solo)');
     setEditPlace('');
     setEditDate(null);
     setEditDescription('');
@@ -531,7 +531,7 @@ export default function TransactionsScreen() {
   const resetSubscriptionForm = () => {
     setSubscriptionAmount('');
     setSubscriptionName('');
-    setSubscriptionCategory('Eating Out');
+    setSubscriptionCategory('Eating Out(Solo)');
     setSubscriptionFrequency('monthly');
     setSubscriptionDueDay('1');
     setSubscriptionDueMonth('1');
@@ -587,7 +587,7 @@ export default function TransactionsScreen() {
   const handleCancelEditSubscription = () => {
     setEditingSubscriptionId(null);
     setEditSubscriptionAmount('');
-    setEditSubscriptionCategory('Eating Out');
+    setEditSubscriptionCategory('Eating Out(Solo)');
     setEditSubscriptionName('');
     setEditSubscriptionFrequency('monthly');
     setEditSubscriptionDueDay('1');
@@ -739,7 +739,7 @@ export default function TransactionsScreen() {
     setBudgetAmount('');
     setBudgetType(BUDGET_TYPE_CATEGORY);
     setBudgetName('');
-    setBudgetCategories(['Eating Out']);
+    setBudgetCategories(['Eating Out(Solo)']);
     setBudgetPeriod('month');
     setSelectedPeriodDate(new Date());
     setIsRecurring(false);
@@ -785,7 +785,7 @@ export default function TransactionsScreen() {
     setEditBudgetAmount('');
     setEditBudgetType(BUDGET_TYPE_CATEGORY);
     setEditBudgetName('');
-    setEditBudgetCategories(['Eating Out']);
+    setEditBudgetCategories(['Eating Out(Solo)']);
     setEditBudgetPeriod('month');
     setEditPeriodDate(new Date());
     setEditIsRecurring(false);
@@ -1390,7 +1390,7 @@ export default function TransactionsScreen() {
                 onPress={() => {
                   setBudgetType(key);
                   if (key === BUDGET_TYPE_CATEGORY && budgetCategories.length !== 1) {
-                    setBudgetCategories(['Eating Out']);
+                    setBudgetCategories(['Eating Out(Solo)']);
                   }
                   if (key === BUDGET_TYPE_OVERALL) {
                     setBudgetCategories([...DEFAULT_OVERALL_CATEGORIES]);
@@ -1563,7 +1563,7 @@ export default function TransactionsScreen() {
                 onPress={() => {
                   setEditBudgetType(key);
                   if (key === BUDGET_TYPE_CATEGORY && editBudgetCategories.length !== 1) {
-                    setEditBudgetCategories(['Eating Out']);
+                    setEditBudgetCategories(['Eating Out(Solo)']);
                   }
                   if (key === BUDGET_TYPE_OVERALL) {
                     setEditBudgetCategories([...DEFAULT_OVERALL_CATEGORIES]);
