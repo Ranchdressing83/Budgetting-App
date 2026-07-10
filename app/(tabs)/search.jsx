@@ -48,7 +48,7 @@ export default function SearchScreen() {
 
   const [editingId, setEditingId] = useState(null);
   const [editAmount, setEditAmount] = useState('');
-  const [editCategory, setEditCategory] = useState('Eating Out');
+  const [editCategory, setEditCategory] = useState('Eating Out(Solo)');
   const [editPlace, setEditPlace] = useState('');
   const [editDate, setEditDate] = useState(null);
   const [editDescription, setEditDescription] = useState('');
@@ -143,7 +143,7 @@ export default function SearchScreen() {
   const handleCancelEdit = () => {
     setEditingId(null);
     setEditAmount('');
-    setEditCategory('Eating Out');
+    setEditCategory('Eating Out(Solo)');
     setEditPlace('');
     setEditDate(null);
     setEditDescription('');

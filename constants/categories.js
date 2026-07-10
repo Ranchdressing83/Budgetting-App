@@ -1,6 +1,8 @@
 // Expense categories - shared across the app
+export const EATING_OUT_CATEGORIES = ['Eating Out(Solo)', 'Eating Out(Social)'];
+
 export const CATEGORIES = [
-  'Eating Out',
+  ...EATING_OUT_CATEGORIES,
   'Groceries',
   'Alcohol',
   'Transit',
@@ -32,7 +34,7 @@ export const WEALTH_BUILDING_CATEGORIES = [
 export const SOCIAL_CATEGORIES = ['Alcohol', 'Uber', 'Events'];
 
 export const DEFAULT_OVERALL_CATEGORIES = [
-  'Eating Out',
+  ...EATING_OUT_CATEGORIES,
   'Alcohol',
   'Uber',
   'Events',
@@ -43,7 +45,7 @@ export const DEFAULT_OVERALL_CATEGORIES = [
 ];
 
 export const LIFESTYLE_GROUP_CATEGORIES = [
-  'Eating Out',
+  ...EATING_OUT_CATEGORIES,
   'Alcohol',
   'Uber',
   'Events',
@@ -63,9 +65,15 @@ export const ESSENTIALS_GROUP_CATEGORIES = [
 
 export const WEALTH_GROUP_CATEGORIES = [...WEALTH_BUILDING_CATEGORIES];
 
+// Graph pie charts roll up these categories under a single label
+export const GRAPH_CATEGORY_GROUPS = [
+  { name: 'Eating Out', categories: EATING_OUT_CATEGORIES },
+];
+
 // Migrate legacy category names from older app versions
 export const LEGACY_CATEGORY_MAP = {
   'Investments - Index Funds': 'Investments - Brokerage',
+  'Eating Out': 'Eating Out(Solo)',
 };
 
 export function normalizeCategory(category) {
@@ -93,6 +101,14 @@ export function getCategoryGroup(category) {
   return 'Other';
 }
 
+export function getGraphCategoryLabel(category) {
+  const normalized = normalizeCategory(category);
+  for (const group of GRAPH_CATEGORY_GROUPS) {
+    if (group.categories.includes(normalized)) return group.name;
+  }
+  return normalized;
+}
+
 // Lifestyle/discretionary categories excluded from Overall Spending budget
 export const OVERALL_BUDGET_EXCLUDED_CATEGORIES = [
   'Rent',
@@ -111,7 +127,9 @@ export function isWealthBuildingCategory(category) {
 // Category colors - shared across the app
 // Using forest green, sea blue, and purple accents with complementary colors
 export const CATEGORY_COLORS = {
-  'Eating Out': '#fc0808',       // Red
+  'Eating Out': '#fc0808',             // Red (graph group rollup)
+  'Eating Out(Solo)': '#fc0808',       // Red
+  'Eating Out(Social)': '#1B3A6B',   // Dark blue
   'Groceries': '#2D5016',        // Forest green
   'Alcohol': '#4A90A4',          // Sea blue
   'Uber': '#FFC107',             // Yellow

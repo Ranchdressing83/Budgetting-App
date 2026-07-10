@@ -1,6 +1,11 @@
 import { useBudget } from '@/components/BudgetContext';
 import { useTransactions } from '@/components/TransactionsContext';
-import { CATEGORY_COLORS, getCategoryGroup, GROUP_COLORS } from '@/constants/categories';
+import {
+  CATEGORY_COLORS,
+  getCategoryGroup,
+  getGraphCategoryLabel,
+  GROUP_COLORS,
+} from '@/constants/categories';
 import { COLORS } from '@/constants/colors';
 import {
   BUDGET_PERIOD_BIWEEKLY,
@@ -93,14 +98,14 @@ function groupByYear(transactions) {
   return grouped;
 }
 
-// Helper function to group expenses by category
+// Helper function to group expenses by category (rolls up graph category groups)
 function groupByCategory(transactions) {
   const grouped = {};
   
   transactions
     .filter((t) => t.type === 'expense')
     .forEach((transaction) => {
-      const category = transaction.category || 'Other';
+      const category = getGraphCategoryLabel(transaction.category || 'Other');
       if (!grouped[category]) {
         grouped[category] = 0;
       }
