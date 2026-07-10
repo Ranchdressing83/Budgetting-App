@@ -47,7 +47,7 @@ export default function BudgetHealthWidget({ health, showProgressBar = true }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.tileBackground,
     marginHorizontal: 20,
     marginTop: 12,
     marginBottom: 4,

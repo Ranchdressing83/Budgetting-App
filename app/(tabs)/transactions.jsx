@@ -4,6 +4,7 @@ import { useIncomeSchedules } from '@/components/IncomeScheduleContext';
 import { useSubscriptions } from '@/components/SubscriptionsContext';
 import { useTransactions } from '@/components/TransactionsContext';
 import { CATEGORIES, CATEGORY_COLORS } from '@/constants/categories';
+import { COLORS } from '@/constants/colors';
 import {
   BUDGET_PERIOD_BIWEEKLY,
   BUDGET_PERIOD_OPTIONS,
@@ -2262,10 +2263,10 @@ export default function TransactionsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.pageBackground,
   },
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.tileBackground,
     padding: 20,
     paddingTop: 60,
     borderBottomWidth: 1,
@@ -2315,7 +2316,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   form: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.tileBackground,
     padding: 20,
     marginBottom: 10,
   },
@@ -2332,7 +2333,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   scheduleCard: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: COLORS.tileBackground,
     borderWidth: 1,
     borderColor: '#e0e0e0',
     borderRadius: 8,
@@ -2659,7 +2660,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.tileBackground,
     borderBottomWidth: 1,
     borderBottomColor: '#e0e0e0',
   },
@@ -2680,7 +2681,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.tileBackground,
     padding: 16,
     marginBottom: 1,
     borderBottomWidth: 1,
@@ -2733,7 +2734,7 @@ const styles = StyleSheet.create({
     color: '#d32f2f',
   },
   editForm: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.tileBackground,
     padding: 16,
     marginBottom: 1,
     borderBottomWidth: 1,
@@ -2788,7 +2789,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.tileBackground,
     padding: 16,
     marginBottom: 1,
     borderBottomWidth: 1,
@@ -2826,7 +2827,7 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   budgetCard: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.tileBackground,
     padding: 16,
     borderRadius: 8,
     marginBottom: 12,
@@ -2871,7 +2872,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: '#ddd',
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.tileBackground,
   },
   categoryChipText: {
     fontSize: 12,

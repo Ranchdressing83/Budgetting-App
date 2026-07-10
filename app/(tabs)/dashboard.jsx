@@ -1,4 +1,5 @@
 import DashboardContent from '@/components/DashboardContent';
+import { COLORS } from '@/constants/colors';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -27,10 +28,10 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: COLORS.pageBackground,
   },
   header: {
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.tileBackground,
     padding: 20,
     paddingTop: 60,
     borderBottomWidth: 1,

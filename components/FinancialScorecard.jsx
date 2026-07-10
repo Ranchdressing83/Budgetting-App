@@ -166,7 +166,7 @@ export default function FinancialScorecard({ scorecard, compact = false }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.tileBackground,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.lightGray,
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
     marginVertical: 14,
   },
   compactCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.tileBackground,
     marginHorizontal: 20,
     marginTop: 16,
     marginBottom: 4,

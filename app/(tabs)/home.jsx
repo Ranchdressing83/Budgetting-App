@@ -132,10 +132,10 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.offWhite,
+    backgroundColor: COLORS.pageBackground,
   },
   header: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.tileBackground,
     padding: 20,
     paddingTop: 60,
     borderBottomWidth: 1,
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   socialSection: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.tileBackground,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: COLORS.lightGray,
@@ -223,7 +223,7 @@ const styles = StyleSheet.create({
     color: COLORS.darkGray,
   },
   insightCard: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.tileBackground,
     borderRadius: 8,
     padding: 16,
     marginBottom: 12,

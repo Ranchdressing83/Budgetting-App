@@ -127,11 +127,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
-    backgroundColor: COLORS.offWhite,
+    backgroundColor: COLORS.pageBackground,
     padding: 24,
   },
   card: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.tileBackground,
     borderRadius: 16,
     padding: 24,
     shadowColor: COLORS.black,

@@ -25,6 +25,8 @@ export const COLORS = {
   white: '#FFFFFF',
   offWhite: '#F8F9FA',
   lightGray: '#E8EDF0',
+  tileBackground: '#D1D9DE',
+  pageBackground: '#B0BEC5',
   gray: '#8B9BA8',
   darkGray: '#4A5568',
   black: '#1A1F2E',
