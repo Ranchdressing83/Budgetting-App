@@ -1,6 +1,7 @@
 import { useAuth } from '@/components/AuthContext';
 import { db } from '@/config/firebase';
 import { migrateCollection } from '@/lib/migration';
+import { stripUndefined } from '@/utils/firestoreUtils';
 import { doc, onSnapshot, serverTimestamp, setDoc } from 'firebase/firestore';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -66,8 +67,8 @@ export function useFirestoreSync(collectionName, options = {}) {
           const metaToSave = migrated?.meta ?? getDefaultMeta?.() ?? {};
 
           await setDoc(docRef, {
-            items: itemsToSave,
-            meta: metaToSave,
+            items: stripUndefined(itemsToSave),
+            meta: stripUndefined(metaToSave),
             updatedAt: serverTimestamp(),
           });
         } catch (error) {
@@ -106,8 +107,8 @@ export function useFirestoreSync(collectionName, options = {}) {
     isSavingRef.current = true;
 
     setDoc(docRef, {
-      items,
-      meta,
+      items: stripUndefined(items),
+      meta: stripUndefined(meta),
       updatedAt: serverTimestamp(),
     })
       .then(() => {

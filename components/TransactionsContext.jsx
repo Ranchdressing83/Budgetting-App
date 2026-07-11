@@ -1,17 +1,22 @@
 import React, { createContext, useCallback, useContext, useEffect } from 'react';
 import { normalizeCategory } from '../constants/categories';
 import { applyScheduleSync, removeScheduleTransactions } from '../utils/incomeScheduleUtils';
+import { toNumber } from '../utils/moneyUtils';
+import { stripUndefined } from '../utils/firestoreUtils';
 import { useFirestoreSync } from '@/hooks/useFirestoreSync';
 
 const TransactionsContext = createContext();
 
 function normalizeTransactions(transactions) {
-  return transactions.map((transaction) => ({
-    ...transaction,
-    category: transaction.category
-      ? normalizeCategory(transaction.category)
-      : transaction.category,
-  }));
+  return transactions.map((transaction) =>
+    stripUndefined({
+      ...transaction,
+      amount: toNumber(transaction.amount, 0),
+      category: transaction.category
+        ? normalizeCategory(transaction.category)
+        : transaction.category,
+    })
+  );
 }
 
 export function TransactionsProvider({ children }) {
@@ -31,11 +36,11 @@ export function TransactionsProvider({ children }) {
   }, [isLoading, transactions, setTransactions]);
 
   const addTransaction = (transaction) => {
-    const newTransaction = {
+    const newTransaction = stripUndefined({
       ...transaction,
       id: Date.now().toString(),
       date: transaction.date || new Date().toISOString(),
-    };
+    });
     setTransactions((prev) => [...prev, newTransaction]);
   };
 
@@ -45,7 +50,7 @@ export function TransactionsProvider({ children }) {
 
   const updateTransaction = (id, updates) => {
     setTransactions((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
+      prev.map((t) => (t.id === id ? stripUndefined({ ...t, ...updates }) : t))
     );
   };
 
