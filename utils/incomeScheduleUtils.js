@@ -19,7 +19,7 @@ export function formatScheduledPayKey(date) {
   return `${year}-${month}-${day}`;
 }
 
-export function formatPayDayList(payDays) {
+export function formatPayDayList(payDays = []) {
   return payDays
     .map((day) => {
       const suffix =

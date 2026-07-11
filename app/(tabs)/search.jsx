@@ -1,4 +1,5 @@
 import { useTransactions } from '@/components/TransactionsContext';
+import DatePickerPanel from '@/components/DatePickerPanel';
 import { CATEGORIES, CATEGORY_COLORS } from '@/constants/categories';
 import { COLORS } from '@/constants/colors';
 import { confirmDelete } from '@/utils/confirmAlert';
@@ -8,7 +9,6 @@ import {
   Alert,
   Image,
   Modal,
-  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -16,7 +16,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
 // Get all unique categories from transactions
 function getUniqueCategories(transactions) {
@@ -202,35 +201,14 @@ export default function SearchScreen() {
                 <Text style={styles.dateButtonText}>{formatDateDisplay(fromDate)}</Text>
               </TouchableOpacity>
             </View>
-            {showFromPicker && (
-              <View style={styles.datePickerContainer}>
-                <View style={styles.datePickerWrapper}>
-                  <View style={styles.datePickerHeader}>
-                    <Text style={styles.datePickerHeaderText}>Select From Date</Text>
-                    <TouchableOpacity
-                      onPress={() => setShowFromPicker(false)}
-                      style={styles.datePickerDoneButton}>
-                      <Text style={styles.datePickerDoneText}>Done</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <DateTimePicker
-                    value={fromDate}
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={(event, selectedDate) => {
-                      if (Platform.OS === 'android') {
-                        setShowFromPicker(false);
-                      }
-                      if (selectedDate) {
-                        setFromDate(selectedDate);
-                      }
-                    }}
-                    maximumDate={toDate}
-                    style={styles.datePicker}
-                  />
-                </View>
-              </View>
-            )}
+            <DatePickerPanel
+              visible={showFromPicker}
+              value={fromDate}
+              onChange={setFromDate}
+              onClose={() => setShowFromPicker(false)}
+              title="Select From Date"
+              maximumDate={toDate}
+            />
             <View style={styles.datePickerRow}>
               <Text style={styles.dateLabel}>To:</Text>
               <TouchableOpacity
@@ -239,36 +217,15 @@ export default function SearchScreen() {
                 <Text style={styles.dateButtonText}>{formatDateDisplay(toDate)}</Text>
               </TouchableOpacity>
             </View>
-            {showToPicker && (
-              <View style={styles.datePickerContainer}>
-                <View style={styles.datePickerWrapper}>
-                  <View style={styles.datePickerHeader}>
-                    <Text style={styles.datePickerHeaderText}>Select To Date</Text>
-                    <TouchableOpacity
-                      onPress={() => setShowToPicker(false)}
-                      style={styles.datePickerDoneButton}>
-                      <Text style={styles.datePickerDoneText}>Done</Text>
-                    </TouchableOpacity>
-                  </View>
-                  <DateTimePicker
-                    value={toDate}
-                    mode="date"
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={(event, selectedDate) => {
-                      if (Platform.OS === 'android') {
-                        setShowToPicker(false);
-                      }
-                      if (selectedDate) {
-                        setToDate(selectedDate);
-                      }
-                    }}
-                    minimumDate={fromDate}
-                    maximumDate={new Date()}
-                    style={styles.datePicker}
-                  />
-                </View>
-              </View>
-            )}
+            <DatePickerPanel
+              visible={showToPicker}
+              value={toDate}
+              onChange={setToDate}
+              onClose={() => setShowToPicker(false)}
+              title="Select To Date"
+              minimumDate={fromDate}
+              maximumDate={new Date()}
+            />
           </View>
         </View>
 
@@ -504,31 +461,13 @@ export default function SearchScreen() {
                   <Text style={styles.clearDateText}>Clear date</Text>
                 </TouchableOpacity>
               )}
-              {showEditDatePicker && (
-                <View style={styles.datePickerContainer}>
-                  <View style={styles.datePickerWrapper}>
-                    <View style={styles.datePickerHeader}>
-                      <Text style={styles.datePickerHeaderText}>Select Date</Text>
-                      <TouchableOpacity
-                        onPress={() => setShowEditDatePicker(false)}
-                        style={styles.datePickerDoneButton}>
-                        <Text style={styles.datePickerDoneText}>Done</Text>
-                      </TouchableOpacity>
-                    </View>
-                    <DateTimePicker
-                      value={editDate || new Date()}
-                      mode="date"
-                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                      onChange={(event, selectedDate) => {
-                        if (Platform.OS === 'android') setShowEditDatePicker(false);
-                        if (selectedDate) setEditDate(selectedDate);
-                      }}
-                      maximumDate={new Date()}
-                      style={styles.datePicker}
-                    />
-                  </View>
-                </View>
-              )}
+              <DatePickerPanel
+                visible={showEditDatePicker}
+                value={editDate || new Date()}
+                onChange={setEditDate}
+                onClose={() => setShowEditDatePicker(false)}
+                maximumDate={new Date()}
+              />
 
               <Text style={styles.fieldLabel}>Description (Optional)</Text>
               <TextInput

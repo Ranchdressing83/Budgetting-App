@@ -1,5 +1,7 @@
 import { useBudget } from '@/components/BudgetContext';
 import BudgetHealthWidget from '@/components/BudgetHealthWidget';
+import CategoryPicker from '@/components/CategoryPicker';
+import DatePickerPanel from '@/components/DatePickerPanel';
 import { useIncomeSchedules } from '@/components/IncomeScheduleContext';
 import { useSubscriptions } from '@/components/SubscriptionsContext';
 import { useTransactions } from '@/components/TransactionsContext';
@@ -40,11 +42,12 @@ import {
   parseDueDay,
   parseDueMonth,
 } from '@/utils/subscriptionUtils';
-import { confirmDelete } from '@/utils/confirmAlert';
-import DateTimePicker from '@react-native-community/datetimepicker';
+import { confirmAction, confirmDelete } from '@/utils/confirmAlert';
+import { formatMoney, toNumber } from '@/utils/moneyUtils';
+import { showAlert } from '@/utils/showAlert';
 import { useRouter } from 'expo-router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Image, Modal, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 // Helper to get period keys
 const getCurrentWeekKey = (date) => {
@@ -297,34 +300,29 @@ export default function TransactionsScreen() {
         const budgetLabel = getBudgetName(budget);
 
         if (percentage >= 100) {
-          Alert.alert(
+          showAlert(
             'Budget Exceeded!',
-            `${budgetLabel} budget for ${budget.period} exceeded! You've spent ${percentage.toFixed(1)}% of your budget.`,
-            [{ text: 'OK' }]
+            `${budgetLabel} budget for ${budget.period} exceeded! You've spent ${percentage.toFixed(1)}% of your budget.`
           );
         } else if (percentage >= 95 && percentage < 100) {
-          Alert.alert(
+          showAlert(
             'Budget Warning',
-            `You're at ${percentage.toFixed(1)}% of your ${budgetLabel} ${budget.period} budget.`,
-            [{ text: 'OK' }]
+            `You're at ${percentage.toFixed(1)}% of your ${budgetLabel} ${budget.period} budget.`
           );
         } else if (percentage >= 90 && percentage < 95) {
-          Alert.alert(
+          showAlert(
             'Budget Alert',
-            `You're at ${percentage.toFixed(1)}% of your ${budgetLabel} ${budget.period} budget.`,
-            [{ text: 'OK' }]
+            `You're at ${percentage.toFixed(1)}% of your ${budgetLabel} ${budget.period} budget.`
           );
         } else if (percentage >= 75 && percentage < 90) {
-          Alert.alert(
+          showAlert(
             'Budget Notice',
-            `You've reached ${percentage.toFixed(1)}% of your ${budgetLabel} ${budget.period} budget.`,
-            [{ text: 'OK' }]
+            `You've reached ${percentage.toFixed(1)}% of your ${budgetLabel} ${budget.period} budget.`
           );
         } else if (percentage >= 50 && percentage < 75) {
-          Alert.alert(
+          showAlert(
             'Budget Update',
-            `You've reached ${percentage.toFixed(1)}% of your ${budgetLabel} ${budget.period} budget.`,
-            [{ text: 'OK' }]
+            `You've reached ${percentage.toFixed(1)}% of your ${budgetLabel} ${budget.period} budget.`
           );
         }
       });
@@ -334,7 +332,7 @@ export default function TransactionsScreen() {
   const handleAddExpense = () => {
     const numAmount = parseFloat(amount);
     if (!amount || isNaN(numAmount) || numAmount <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid amount');
+      showAlert('Invalid Amount', 'Please enter a valid amount');
       return;
     }
 
@@ -343,8 +341,8 @@ export default function TransactionsScreen() {
       type: 'expense',
       amount: numAmount,
       category,
-      place: place.trim() || undefined,
-      description: description.trim() || undefined,
+      ...(place.trim() ? { place: place.trim() } : {}),
+      ...(description.trim() ? { description: description.trim() } : {}),
       date: expenseDate.toISOString(),
     });
 
@@ -378,7 +376,7 @@ export default function TransactionsScreen() {
   const handleSaveEdit = () => {
     const numAmount = parseFloat(editAmount);
     if (!editAmount || isNaN(numAmount) || numAmount <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid amount');
+      showAlert('Invalid Amount', 'Please enter a valid amount');
       return;
     }
 
@@ -402,7 +400,7 @@ export default function TransactionsScreen() {
   const handleAddIncome = () => {
     const numAmount = parseFloat(incomeAmount);
     if (!incomeAmount || isNaN(numAmount) || numAmount <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid amount');
+      showAlert('Invalid Amount', 'Please enter a valid amount');
       return;
     }
 
@@ -431,7 +429,7 @@ export default function TransactionsScreen() {
   const populateSalaryForm = (schedule) => {
     setSalaryAmount(schedule.amount.toString());
     setSalaryCategory(schedule.category);
-    setSalaryPayDays(schedule.payDays.map(String));
+    setSalaryPayDays((schedule.payDays || ['1', '15']).map(String));
     setEditingScheduleId(schedule.id);
     setShowSalaryForm(true);
     requestScrollToEdit();
@@ -455,13 +453,13 @@ export default function TransactionsScreen() {
   const handleSaveSalarySchedule = () => {
     const numAmount = parseFloat(salaryAmount);
     if (!salaryAmount || Number.isNaN(numAmount) || numAmount <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid paycheck amount');
+      showAlert('Invalid Amount', 'Please enter a valid paycheck amount');
       return;
     }
 
     const payDays = parsePayDays(salaryPayDays);
     if (payDays.length === 0) {
-      Alert.alert('Invalid Pay Days', 'Add at least one pay day between 1 and 31');
+      showAlert('Invalid Pay Days', 'Add at least one pay day between 1 and 31');
       return;
     }
 
@@ -502,7 +500,7 @@ export default function TransactionsScreen() {
   const handleSyncPaychecks = () => {
     if (!primarySalarySchedule) return;
     syncScheduledIncome(primarySalarySchedule);
-    Alert.alert('Paychecks Synced', "This month's scheduled paychecks are up to date.");
+    showAlert('Paychecks Synced', "This month's scheduled paychecks are up to date.");
   };
 
   // Subscription handlers
@@ -542,11 +540,11 @@ export default function TransactionsScreen() {
   const handleAddSubscription = () => {
     const numAmount = parseFloat(subscriptionAmount);
     if (!subscriptionAmount || isNaN(numAmount) || numAmount <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid amount');
+      showAlert('Invalid Amount', 'Please enter a valid amount');
       return;
     }
     if (!subscriptionName.trim()) {
-      Alert.alert('Invalid Name', 'Please enter a fixed cost name');
+      showAlert('Invalid Name', 'Please enter a fixed cost name');
       return;
     }
 
@@ -557,7 +555,7 @@ export default function TransactionsScreen() {
       subscriptionDueDayOfWeek
     );
     if (dueFields === null) {
-      Alert.alert('Invalid Due Date', 'Please enter a valid due day or month');
+      showAlert('Invalid Due Date', 'Please enter a valid due day or month');
       return;
     }
 
@@ -599,11 +597,11 @@ export default function TransactionsScreen() {
   const handleSaveEditSubscription = () => {
     const numAmount = parseFloat(editSubscriptionAmount);
     if (!editSubscriptionAmount || isNaN(numAmount) || numAmount <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid amount');
+      showAlert('Invalid Amount', 'Please enter a valid amount');
       return;
     }
     if (!editSubscriptionName.trim()) {
-      Alert.alert('Invalid Name', 'Please enter a fixed cost name');
+      showAlert('Invalid Name', 'Please enter a fixed cost name');
       return;
     }
 
@@ -614,7 +612,7 @@ export default function TransactionsScreen() {
       editSubscriptionDueDayOfWeek
     );
     if (dueFields === null) {
-      Alert.alert('Invalid Due Date', 'Please enter a valid due day or month');
+      showAlert('Invalid Due Date', 'Please enter a valid due day or month');
       return;
     }
 
@@ -631,7 +629,7 @@ export default function TransactionsScreen() {
 
   const handleMarkSubscriptionPaid = (subscription) => {
     if (isSubscriptionPaid(subscription)) {
-      Alert.alert('Already Paid', 'This fixed cost is already marked paid for the current period.');
+      showAlert('Already Paid', 'This fixed cost is already marked paid for the current period.');
       return;
     }
 
@@ -659,16 +657,11 @@ export default function TransactionsScreen() {
   };
 
   const handleUnmarkSubscriptionPaid = (subscription) => {
-    Alert.alert(
+    confirmAction(
       'Unmark Paid',
       'Remove the paid status for this period? The logged expense will not be deleted.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Unmark',
-          onPress: () => updateSubscription(subscription.id, { lastPaidPeriodKey: null }),
-        },
-      ]
+      'Unmark',
+      () => updateSubscription(subscription.id, { lastPaidPeriodKey: null })
     );
   };
 
@@ -686,12 +679,12 @@ export default function TransactionsScreen() {
           : name.trim();
 
     if (!resolvedName) {
-      Alert.alert('Missing Name', 'Please enter a budget name');
+      showAlert('Missing Name', 'Please enter a budget name');
       return null;
     }
 
     if (categories.length === 0) {
-      Alert.alert('Missing Categories', 'Please select at least one category');
+      showAlert('Missing Categories', 'Please select at least one category');
       return null;
     }
 
@@ -719,7 +712,7 @@ export default function TransactionsScreen() {
   const handleAddBudget = () => {
     const numAmount = parseFloat(budgetAmount);
     if (!budgetAmount || isNaN(numAmount) || numAmount <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid budget amount');
+      showAlert('Invalid Amount', 'Please enter a valid budget amount');
       return;
     }
 
@@ -795,7 +788,7 @@ export default function TransactionsScreen() {
   const handleSaveEditBudget = () => {
     const numAmount = parseFloat(editBudgetAmount);
     if (!editBudgetAmount || isNaN(numAmount) || numAmount <= 0) {
-      Alert.alert('Invalid Amount', 'Please enter a valid budget amount');
+      showAlert('Invalid Amount', 'Please enter a valid budget amount');
       return;
     }
 
@@ -863,56 +856,12 @@ export default function TransactionsScreen() {
           />
         </TouchableOpacity>
 
-        <Modal
+        <CategoryPicker
           visible={showCategoryDropdown}
-          transparent={true}
-          animationType="fade"
-          onRequestClose={() => setShowCategoryDropdown(false)}>
-          <TouchableOpacity
-            style={styles.modalOverlay}
-            activeOpacity={1}
-            onPress={() => setShowCategoryDropdown(false)}>
-            <View style={styles.dropdownMenu} onStartShouldSetResponder={() => true}>
-              <ScrollView style={styles.dropdownScrollView}>
-                {CATEGORIES.map((cat) => {
-                  const isSelected = category === cat;
-                  const categoryColor = CATEGORY_COLORS[cat] || '#9E9E9E';
-                  return (
-                    <TouchableOpacity
-                      key={cat}
-                      style={[
-                        styles.dropdownItem,
-                        isSelected && {
-                          backgroundColor: categoryColor + '20',
-                          borderLeftWidth: 4,
-                          borderLeftColor: categoryColor,
-                        },
-                      ]}
-                      onPress={() => {
-                        setCategory(cat);
-                        setShowCategoryDropdown(false);
-                      }}>
-                      <View style={styles.dropdownItemLeft}>
-                        <View
-                          style={[
-                            styles.categoryColorDot,
-                            { backgroundColor: categoryColor },
-                          ]}
-                        />
-                        <Text style={[styles.dropdownItemText, isSelected && { fontWeight: '600' }]}>
-                          {cat}
-                        </Text>
-                      </View>
-                      {isSelected && (
-                        <Text style={styles.checkmark}>✓</Text>
-                      )}
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
-            </View>
-          </TouchableOpacity>
-        </Modal>
+          selectedCategory={category}
+          onSelect={setCategory}
+          onClose={() => setShowCategoryDropdown(false)}
+        />
 
         <Text style={styles.label}>Place of Purchase (Optional)</Text>
         <TextInput
@@ -940,35 +889,13 @@ export default function TransactionsScreen() {
             </TouchableOpacity>
           )}
         </View>
-        {showDatePicker && (
-          <View style={styles.datePickerContainer}>
-            <View style={styles.datePickerWrapper}>
-              <View style={styles.datePickerHeader}>
-                <Text style={styles.datePickerHeaderText}>Select Date</Text>
-                <TouchableOpacity
-                  onPress={() => setShowDatePicker(false)}
-                  style={styles.datePickerDoneButton}>
-                  <Text style={styles.datePickerDoneText}>Done</Text>
-                </TouchableOpacity>
-              </View>
-              <DateTimePicker
-                value={selectedDate || new Date()}
-                mode="date"
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                onChange={(event, date) => {
-                  if (Platform.OS === 'android') {
-                    setShowDatePicker(false);
-                  }
-                  if (date) {
-                    setSelectedDate(date);
-                  }
-                }}
-                maximumDate={new Date()}
-                style={styles.datePicker}
-              />
-            </View>
-          </View>
-        )}
+        <DatePickerPanel
+          visible={showDatePicker}
+          value={selectedDate || new Date()}
+          onChange={setSelectedDate}
+          onClose={() => setShowDatePicker(false)}
+          maximumDate={new Date()}
+        />
 
         <Text style={styles.label}>Description (Optional)</Text>
         <TextInput
@@ -994,6 +921,7 @@ export default function TransactionsScreen() {
           <Text style={styles.emptyText}>No expenses yet. Add one above!</Text>
         ) : (
           expenses
+            .slice()
             .sort((a, b) => new Date(b.date) - new Date(a.date))
             .map((expense) => (
               <View key={expense.id}>
@@ -1025,56 +953,12 @@ export default function TransactionsScreen() {
                       />
                     </TouchableOpacity>
 
-                    <Modal
+                    <CategoryPicker
                       visible={showEditCategoryDropdown}
-                      transparent={true}
-                      animationType="fade"
-                      onRequestClose={() => setShowEditCategoryDropdown(false)}>
-                      <TouchableOpacity
-                        style={styles.modalOverlay}
-                        activeOpacity={1}
-                        onPress={() => setShowEditCategoryDropdown(false)}>
-                        <View style={styles.dropdownMenu} onStartShouldSetResponder={() => true}>
-                          <ScrollView style={styles.dropdownScrollView}>
-                            {CATEGORIES.map((cat) => {
-                              const isSelected = editCategory === cat;
-                              const categoryColor = CATEGORY_COLORS[cat] || '#9E9E9E';
-                              return (
-                                <TouchableOpacity
-                                  key={cat}
-                                  style={[
-                                    styles.dropdownItem,
-                                    isSelected && {
-                                      backgroundColor: categoryColor + '20',
-                                      borderLeftWidth: 4,
-                                      borderLeftColor: categoryColor,
-                                    },
-                                  ]}
-                                  onPress={() => {
-                                    setEditCategory(cat);
-                                    setShowEditCategoryDropdown(false);
-                                  }}>
-                                  <View style={styles.dropdownItemLeft}>
-                                    <View
-                                      style={[
-                                        styles.categoryColorDot,
-                                        { backgroundColor: categoryColor },
-                                      ]}
-                                    />
-                                    <Text style={[styles.dropdownItemText, isSelected && { fontWeight: '600' }]}>
-                                      {cat}
-                                    </Text>
-                                  </View>
-                                  {isSelected && (
-                                    <Text style={styles.checkmark}>✓</Text>
-                                  )}
-                                </TouchableOpacity>
-                              );
-                            })}
-                          </ScrollView>
-                        </View>
-                      </TouchableOpacity>
-                    </Modal>
+                      selectedCategory={editCategory}
+                      onSelect={setEditCategory}
+                      onClose={() => setShowEditCategoryDropdown(false)}
+                    />
 
                     <Text style={styles.label}>Place of Purchase (Optional)</Text>
                     <TextInput
@@ -1102,35 +986,13 @@ export default function TransactionsScreen() {
                         </TouchableOpacity>
                       )}
                     </View>
-                    {showEditDatePicker && (
-                      <View style={styles.datePickerContainer}>
-                        <View style={styles.datePickerWrapper}>
-                          <View style={styles.datePickerHeader}>
-                            <Text style={styles.datePickerHeaderText}>Select Date</Text>
-                            <TouchableOpacity
-                              onPress={() => setShowEditDatePicker(false)}
-                              style={styles.datePickerDoneButton}>
-                              <Text style={styles.datePickerDoneText}>Done</Text>
-                            </TouchableOpacity>
-                          </View>
-                          <DateTimePicker
-                            value={editDate || new Date()}
-                            mode="date"
-                            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                            onChange={(event, date) => {
-                              if (Platform.OS === 'android') {
-                                setShowEditDatePicker(false);
-                              }
-                              if (date) {
-                                setEditDate(date);
-                              }
-                            }}
-                            maximumDate={new Date()}
-                            style={styles.datePicker}
-                          />
-                        </View>
-                      </View>
-                    )}
+                    <DatePickerPanel
+                      visible={showEditDatePicker}
+                      value={editDate || new Date()}
+                      onChange={setEditDate}
+                      onClose={() => setShowEditDatePicker(false)}
+                      maximumDate={new Date()}
+                    />
 
                     <Text style={styles.label}>Description (Optional)</Text>
                     <TextInput
@@ -1164,7 +1026,7 @@ export default function TransactionsScreen() {
                       <Text style={styles.expenseDate}>{formatDate(expense.date)}</Text>
                     </View>
                     <View style={styles.expenseRight}>
-                      <Text style={styles.expenseAmount}>${expense.amount.toFixed(2)}</Text>
+                      <Text style={styles.expenseAmount}>{formatMoney(expense.amount)}</Text>
                       <View style={styles.expenseActions}>
                         <TouchableOpacity onPress={() => handleEdit(expense)}>
                           <Text style={styles.editButton}>Edit</Text>
@@ -1198,10 +1060,10 @@ export default function TransactionsScreen() {
           <View style={styles.scheduleCard}>
             <Text style={styles.scheduleTitle}>{primarySalarySchedule.category}</Text>
             <Text style={styles.scheduleDetail}>
-              ${primarySalarySchedule.amount.toFixed(2)} per paycheck
+              {formatMoney(primarySalarySchedule.amount)} per paycheck
             </Text>
             <Text style={styles.scheduleDetail}>
-              Paid on the {formatPayDayList(primarySalarySchedule.payDays)} of each month
+              Paid on the {formatPayDayList(primarySalarySchedule.payDays || [])} of each month
             </Text>
             {upcomingPayDates.length > 0 && (
               <Text style={styles.scheduleSubdetail}>
@@ -1330,7 +1192,7 @@ export default function TransactionsScreen() {
 
       <View style={styles.listHeader}>
         <Text style={styles.listTitle}>Income History</Text>
-        <Text style={styles.totalText}>Total: ${income.reduce((sum, i) => sum + i.amount, 0).toFixed(2)}</Text>
+        <Text style={styles.totalText}>Total: {formatMoney(income.reduce((sum, i) => sum + toNumber(i.amount), 0))}</Text>
       </View>
 
       <View style={styles.list}>
@@ -1351,7 +1213,7 @@ export default function TransactionsScreen() {
                   <Text style={styles.incomeDate}>{formatDate(entry.date)}</Text>
                 </View>
                 <View style={styles.incomeRight}>
-                  <Text style={styles.incomeAmount}>${entry.amount.toFixed(2)}</Text>
+                  <Text style={styles.incomeAmount}>{formatMoney(entry.amount)}</Text>
                   <TouchableOpacity onPress={() => handleDeleteIncome(entry.id)}>
                     <Text style={styles.deleteButton}>Delete</Text>
                   </TouchableOpacity>
@@ -1505,34 +1367,13 @@ export default function TransactionsScreen() {
               )}
             </>
           )}
-          {showPeriodDatePicker && !isRecurring && (
-            <View style={styles.datePickerContainer}>
-              <View style={styles.datePickerWrapper}>
-                <View style={styles.datePickerHeader}>
-                  <Text style={styles.datePickerHeaderText}>Select {getPeriodSelectionLabel(budgetPeriod)}</Text>
-                  <TouchableOpacity
-                    onPress={() => setShowPeriodDatePicker(false)}
-                    style={styles.datePickerDoneButton}>
-                    <Text style={styles.datePickerDoneText}>Done</Text>
-                  </TouchableOpacity>
-                </View>
-                <DateTimePicker
-                  value={selectedPeriodDate}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={(event, date) => {
-                    if (Platform.OS === 'android') {
-                      setShowPeriodDatePicker(false);
-                    }
-                    if (date) {
-                      setSelectedPeriodDate(date);
-                    }
-                  }}
-                  style={styles.datePicker}
-                />
-              </View>
-            </View>
-          )}
+          <DatePickerPanel
+            visible={showPeriodDatePicker && !isRecurring}
+            value={selectedPeriodDate}
+            onChange={setSelectedPeriodDate}
+            onClose={() => setShowPeriodDatePicker(false)}
+            title={`Select ${getPeriodSelectionLabel(budgetPeriod)}`}
+          />
 
           <TouchableOpacity style={styles.addButton} onPress={handleAddBudget}>
             <Text style={styles.addButtonText}>Add Budget</Text>
@@ -1678,34 +1519,13 @@ export default function TransactionsScreen() {
               )}
             </>
           )}
-          {showEditPeriodDatePicker && !editIsRecurring && (
-            <View style={styles.datePickerContainer}>
-              <View style={styles.datePickerWrapper}>
-                <View style={styles.datePickerHeader}>
-                  <Text style={styles.datePickerHeaderText}>Select {getPeriodSelectionLabel(editBudgetPeriod)}</Text>
-                  <TouchableOpacity
-                    onPress={() => setShowEditPeriodDatePicker(false)}
-                    style={styles.datePickerDoneButton}>
-                    <Text style={styles.datePickerDoneText}>Done</Text>
-                  </TouchableOpacity>
-                </View>
-                <DateTimePicker
-                  value={editPeriodDate}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={(event, date) => {
-                    if (Platform.OS === 'android') {
-                      setShowEditPeriodDatePicker(false);
-                    }
-                    if (date) {
-                      setEditPeriodDate(date);
-                    }
-                  }}
-                  style={styles.datePicker}
-                />
-              </View>
-            </View>
-          )}
+          <DatePickerPanel
+            visible={showEditPeriodDatePicker && !editIsRecurring}
+            value={editPeriodDate}
+            onChange={setEditPeriodDate}
+            onClose={() => setShowEditPeriodDatePicker(false)}
+            title={`Select ${getPeriodSelectionLabel(editBudgetPeriod)}`}
+          />
 
           <View style={styles.editButtons}>
             <TouchableOpacity style={styles.cancelButton} onPress={handleCancelEditBudget}>
@@ -1752,10 +1572,10 @@ export default function TransactionsScreen() {
                 </View>
                 <View style={styles.budgetAmounts}>
                   <Text style={styles.budgetSpent}>
-                    Spent: ${budget.spending.toFixed(2)}
+                    Spent: {formatMoney(budget.spending)}
                   </Text>
                   <Text style={styles.budgetTotal}>
-                    Budget: ${budget.amount.toFixed(2)}
+                    Budget: {formatMoney(budget.amount)}
                   </Text>
                 </View>
               </View>
@@ -1928,56 +1748,12 @@ export default function TransactionsScreen() {
             />
           </TouchableOpacity>
 
-          <Modal
+          <CategoryPicker
             visible={showSubscriptionCategoryDropdown}
-            transparent={true}
-            animationType="fade"
-            onRequestClose={() => setShowSubscriptionCategoryDropdown(false)}>
-            <TouchableOpacity
-              style={styles.modalOverlay}
-              activeOpacity={1}
-              onPress={() => setShowSubscriptionCategoryDropdown(false)}>
-              <View style={styles.dropdownMenu} onStartShouldSetResponder={() => true}>
-                <ScrollView style={styles.dropdownScrollView}>
-                  {CATEGORIES.map((cat) => {
-                    const isSelected = subscriptionCategory === cat;
-                    const categoryColor = CATEGORY_COLORS[cat] || '#9E9E9E';
-                    return (
-                      <TouchableOpacity
-                        key={cat}
-                        style={[
-                          styles.dropdownItem,
-                          isSelected && {
-                            backgroundColor: categoryColor + '20',
-                            borderLeftWidth: 4,
-                            borderLeftColor: categoryColor,
-                          },
-                        ]}
-                        onPress={() => {
-                          setSubscriptionCategory(cat);
-                          setShowSubscriptionCategoryDropdown(false);
-                        }}>
-                        <View style={styles.dropdownItemLeft}>
-                          <View
-                            style={[
-                              styles.categoryColorDot,
-                              { backgroundColor: categoryColor },
-                            ]}
-                          />
-                          <Text style={[styles.dropdownItemText, isSelected && { fontWeight: '600' }]}>
-                            {cat}
-                          </Text>
-                        </View>
-                        {isSelected && (
-                          <Text style={styles.checkmark}>✓</Text>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            </TouchableOpacity>
-          </Modal>
+            selectedCategory={subscriptionCategory}
+            onSelect={setSubscriptionCategory}
+            onClose={() => setShowSubscriptionCategoryDropdown(false)}
+          />
 
           <Text style={styles.label}>Frequency</Text>
           <View style={styles.fixedCostFrequencyContainer}>
@@ -2046,56 +1822,12 @@ export default function TransactionsScreen() {
             />
           </TouchableOpacity>
 
-          <Modal
+          <CategoryPicker
             visible={showEditSubscriptionCategoryDropdown}
-            transparent={true}
-            animationType="fade"
-            onRequestClose={() => setShowEditSubscriptionCategoryDropdown(false)}>
-            <TouchableOpacity
-              style={styles.modalOverlay}
-              activeOpacity={1}
-              onPress={() => setShowEditSubscriptionCategoryDropdown(false)}>
-              <View style={styles.dropdownMenu} onStartShouldSetResponder={() => true}>
-                <ScrollView style={styles.dropdownScrollView}>
-                  {CATEGORIES.map((cat) => {
-                    const isSelected = editSubscriptionCategory === cat;
-                    const categoryColor = CATEGORY_COLORS[cat] || '#9E9E9E';
-                    return (
-                      <TouchableOpacity
-                        key={cat}
-                        style={[
-                          styles.dropdownItem,
-                          isSelected && {
-                            backgroundColor: categoryColor + '20',
-                            borderLeftWidth: 4,
-                            borderLeftColor: categoryColor,
-                          },
-                        ]}
-                        onPress={() => {
-                          setEditSubscriptionCategory(cat);
-                          setShowEditSubscriptionCategoryDropdown(false);
-                        }}>
-                        <View style={styles.dropdownItemLeft}>
-                          <View
-                            style={[
-                              styles.categoryColorDot,
-                              { backgroundColor: categoryColor },
-                            ]}
-                          />
-                          <Text style={[styles.dropdownItemText, isSelected && { fontWeight: '600' }]}>
-                            {cat}
-                          </Text>
-                        </View>
-                        {isSelected && (
-                          <Text style={styles.checkmark}>✓</Text>
-                        )}
-                      </TouchableOpacity>
-                    );
-                  })}
-                </ScrollView>
-              </View>
-            </TouchableOpacity>
-          </Modal>
+            selectedCategory={editSubscriptionCategory}
+            onSelect={setEditSubscriptionCategory}
+            onClose={() => setShowEditSubscriptionCategoryDropdown(false)}
+          />
 
           <Text style={styles.label}>Frequency</Text>
           <View style={styles.fixedCostFrequencyContainer}>
@@ -2170,7 +1902,7 @@ export default function TransactionsScreen() {
               </View>
               <View style={styles.budgetAmounts}>
                 <Text style={styles.budgetTotal}>
-                  ${subscription.amount.toFixed(2)} / {formatFixedCostFrequency(subscription.frequency).toLowerCase()}
+                  {formatMoney(subscription.amount)} / {formatFixedCostFrequency(subscription.frequency).toLowerCase()}
                 </Text>
               </View>
               <View style={styles.subscriptionPayActions}>
