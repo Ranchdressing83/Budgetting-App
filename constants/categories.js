@@ -11,6 +11,7 @@ export const CATEGORIES = [
   'Gambling',
   'Car',
   'Home Essentials',
+  'Laundry',
   'Clothing',
   'Events',
   'Travel',
@@ -59,6 +60,7 @@ export const ESSENTIALS_GROUP_CATEGORIES = [
   'Groceries',
   'Transit',
   'Home Essentials',
+  'Laundry',
   'Utilities',
   'Rent',
 ];
@@ -137,6 +139,7 @@ export const CATEGORY_COLORS = {
   'Gambling': '#FF9800',         // Orange
   'Car': '#5B9BD5',              // Light sea blue
   'Home Essentials': '#eb34d8',  // Pink
+  'Laundry': '#6B8F71',          // Muted green
   'Clothing': '#0ee6d4',         // Teal
   'Events': '#c934eb',           // Purple
   'Travel': '#0839fc',           // Ocean Blue
